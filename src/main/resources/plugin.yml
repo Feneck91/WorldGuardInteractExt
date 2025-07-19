@@ -1,0 +1,5 @@
+name: WorldGuardInteractExt
+version: 0.1
+main: fr.feneck91.worldguardinteractext.WorldGuardInteractExt
+api-version: 1.20
+depend: [WorldGuard]

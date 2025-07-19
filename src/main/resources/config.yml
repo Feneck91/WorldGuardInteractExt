@@ -1,0 +1,26 @@
+#
+# WorldGuardInteractExt configuration file
+#
+# WARNING: This file is based on WorldGuard region configuration.
+#          A single mistyped character can corrupt the file.
+#          If WorldGuardInteractExt is unable to parse the file, your configuration
+#          will fail to load and the contents of this file will ignored.
+#          Please use a YAML validator such as http://yaml-online-parser.appspot.com (for smaller files).
+#
+# REMEMBER TO KEEP PERIODICAL BACKUPS.
+#
+
+# Will display log while block interaction, make more easy to debug and configure
+# By default is false
+enable_logs: false
+items:
+  [
+    {
+      type: "__FIRE__",
+      names: ["CAMPFIRE", "SOUL_CAMPFIRE"],
+      regions: ["region 1", "region 2"],
+      tools: ["AIR", ".+_SHOVEL"],
+      on: true,
+      off: true,
+    }
+  ]
