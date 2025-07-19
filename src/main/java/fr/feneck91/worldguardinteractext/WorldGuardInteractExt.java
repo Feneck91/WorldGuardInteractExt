@@ -1,11 +1,15 @@
-package fr.feneck91.campfireextinguisher;
+package fr.feneck91.worldguardinteractext;
 
+import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.block.data.type.Campfire;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.entity.Player;
 import org.bukkit.block.Block;
@@ -15,7 +19,7 @@ import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import com.sk89q.worldguard.protection.managers.RegionManager;
-import com.sk89q.worldguard.protection.managers.RegionContainer;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 
@@ -33,7 +37,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     /**
      * Class to manage material than can be survey.
      */
-    public class MaterialSurvey
+    public static class MaterialSurvey
     {
         /**
          * Material that can be manage.
@@ -50,7 +54,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
      * Is log enabled?
      */
     private boolean         m_bIsLogEnabled;
-    //private Map<String, >    m_allowedRegionsNames;
+    //private Map<String, >   m_allowedRegionsNames;
     //private Material extinguishItem;
 
     /**
@@ -86,7 +90,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
      */
     private boolean readConfiguration()
     {
-        bool bREt = false;
+        boolean bRet = false;
         saveDefaultConfig();
         FileConfiguration config = getConfig();
         // Reading config
@@ -209,7 +213,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
         {
             ApplicableRegionSet regionSet = manager.getApplicableRegions(BukkitAdapter.asBlockVector(player.getLocation()));
             Set<String> currentRegions = regionSet.getRegions().stream().map(ProtectedRegion::getId).collect(Collectors.toSet());
-
+            /*
             for (String region : m_allowedRegionsNames)
             {
                 if (currentRegions.contains(region)) 
@@ -217,7 +221,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
                     bRet = true;
                     break;
                 }
-            }
+            }*/
         }
         return bRet;
     }
