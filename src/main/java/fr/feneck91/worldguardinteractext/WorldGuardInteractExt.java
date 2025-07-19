@@ -23,6 +23,7 @@ import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -95,7 +96,21 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
         FileConfiguration config = getConfig();
         // Reading config
         m_bIsLogEnabled = config.getBoolean("enable_logs");
-        List<?> listItems = config.getList("items");
+
+        for (Map<?, ?> itemlist : config.getMapList("items"))
+        {   // Iterate across the List of Maps in the config
+            Map<String, Object> mapItems = (Map<String, Object>) itemlist;
+            mapItems.get("type");
+            "__FIRE__";
+            for (Map.Entry<String, Object> entry : mapItems.entrySet())
+            {
+                String strKey = entry.getKey();
+                if (m_bIsLogEnabled)
+                {
+                    getLogger().info("Entry Key = " + strKey);
+                }
+            }
+        }
         bRet = true;
         /*
         Material.CAMPFIRE.name();
