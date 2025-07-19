@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>fr.feneck91</groupId>
     <artifactId>WorldGuardInteractExt</artifactId>
-    <version>1.0</version>
+    <version>0.1</version>
     <packaging>jar</packaging>
     <name>WorldGuardInteractExt</name>
 
@@ -18,15 +18,21 @@
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+        <repository>
+            <id>sk89q-repo</id>
+            <url>https://maven.enginehub.org/repo/</url>
+        </repository>
     </repositories>
 
     <dependencies>
+        <!--Spigot API-->
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
             <version>1.20.1-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
+        <!-- WorldEdit -->
         <dependency>
             <groupId>com.sk89q.worldguard</groupId>
             <artifactId>worldguard-bukkit</artifactId>

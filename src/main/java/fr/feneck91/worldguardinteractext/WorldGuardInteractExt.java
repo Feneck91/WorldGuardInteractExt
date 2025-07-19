@@ -133,19 +133,19 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     }
 */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onCampfireClick(PlayerInteractEvent event)
+    public void onCampfireClick(PlayerInteractEvent _event)
     {
-        if (event.getHand() != EquipmentSlot.HAND)
+        if (_event.getHand() != EquipmentSlot.HAND)
         {
             return; // To not do more than once with OFF_HAND
         }
 
-        if (event.getClickedBlock() == null)
+        if (_event.getClickedBlock() == null)
         {
             return;
         }
 
-        Block block = event.getClickedBlock();
+        Block block = _event.getClickedBlock();
         if (block.getType() != Material.CAMPFIRE && block.getType() != Material.SOUL_CAMPFIRE)
         {
             return;
@@ -157,8 +157,8 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
         }
         
         Campfire campfire = (Campfire) block.getBlockData();
-        Player player = event.getPlayer();
-        ItemStack item = event.getItem();
+        Player player = _event.getPlayer();
+        ItemStack item = _event.getItem();
         Material tool = item != null ? item.getType() : Material.AIR;
 
         if (campfire.isLit())
@@ -168,7 +168,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
                 campfire.setLit(false);
                 block.setBlockData(campfire);
                 block.getWorld().playSound(block.getLocation(), "block.fire.extinguish", 1.0f, 1.0f);
-                event.setCancelled(true);
+                _event.setCancelled(true);
             }
         }
         else
@@ -178,9 +178,9 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
                 campfire.setLit(true);
                 block.setBlockData(campfire);
                 block.getWorld().playSound(block.getLocation(), "item.flintandsteel.use", 1.0f, 1.0f);
-                event.setCancelled(true);
+                _event.setCancelled(true);
 
-                // Réduire la durabilité ou consommer un item (sauf créatif)
+                // Reduce durability or consume item (if not creative mode)
                 if (player.getGameMode() != GameMode.CREATIVE)
                 {
                     if (tool == Material.FLINT_AND_STEEL)
@@ -188,7 +188,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
                         item.setDurability((short)(item.getDurability() + 1));
                         if (item.getDurability() >= item.getType().getMaxDurability())
                         {
-                            player.getInventory().getItem(event.getHand()).setAmount(0);
+                            player.getInventory().getItem(_event.getHand()).setAmount(0);
                         }
                     }
                     else if (tool == Material.FIRE_CHARGE)
