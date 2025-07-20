@@ -1,0 +1,299 @@
+package fr.feneck91.worldguardinteractext;
+
+import org.bukkit.GameMode;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.Lightable;
+import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.checkerframework.checker.regex.qual.Regex;
+import org.w3c.dom.DOMStringList;
+
+import java.util.*;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+
+/**
+ * Class that implements MaterialManager for fire materials.
+ */
+public class FireMaterialManager extends AMaterialManager implements IMaterialManager
+{
+    /**
+     * Material type that this class manage.
+     */
+    public static final String MATERIAL_TYPE = "__FIRE__";
+
+    /**
+     * Class that manage all informations about fire.
+     */
+    private static class InformationsFireMaterial
+    {
+        /**
+         * List of region allowed
+         */
+        public Set<String> m_lstRegions;
+
+        /**
+         * Material to survey.
+         */
+        public Set<Material> m_lstMaterials;
+
+        /**
+         * Material allowed to inflame.
+         */
+        public Set<Material> m_lstInflameMaterials;
+
+        /**
+         * Material allowed to extinguish fire.
+         */
+        public Set<Material> m_lstExtinguishMaterials;
+    };
+
+    /**
+     * List of map informations.
+     */
+    private Map<String, InformationsFireMaterial> m_mapInformationsFireMaterial;
+
+    /**
+     * Constructor.
+     *
+     * @param _plugin Plugin, used to access logger ot other things.
+     */
+    public FireMaterialManager(WorldGuardInteractExt _plugin)
+    {
+        super(_plugin);
+        m_mapInformationsFireMaterial = new HashMap<String, InformationsFireMaterial>();
+    }
+
+    /**
+     * Get Material type like __FIRE__, __FIELD__, etc.
+     *
+     * @return tye material type.
+     */
+    @Override
+    public String getMaterialType()
+    {
+        return MATERIAL_TYPE;
+    }
+
+    /**
+     * Ask ig this material is valid for this type.
+     *
+     * @param _material Material to test.
+     * @return true if this material is valid, false else.
+     */
+    @Override
+    public boolean isMaterialValidForType(Material _material)
+    {
+        return _material != null && (_material.isFlammable() || _material.isBurnable());
+    }
+
+    /**
+     * Read a piece of configuration about fire.
+     *
+     * @param _mapItems Maps items Config to read.
+     * @return true if _mapItems is read without error, false else.
+     */
+    @Override
+    public boolean readConfig(Map<String, Object> _mapItems)
+    {
+        boolean bRet = true;
+        List<Material> listMaterial = null;
+        List<Material> listInflame = new ArrayList<Material>();
+        List<Material> listExtinguish = new ArrayList<Material>();
+        Set<String> lstRegions;
+
+        listMaterial = findMaterials((ArrayList<String>) _mapItems.get("names"),
+                                     this::isMaterialValidForType,
+                                     (Material itemMaterial) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add '" + itemMaterial.name() + "'"); },
+                                     (Material itemMaterial) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + itemMaterial.name() + "' that is not valid for this type, material ignored"); }
+                                    );
+        if (listMaterial.isEmpty())
+        {
+            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found no item!");
+            // bRet = false; No, not a critical error, just ignore __FIRE__ configuration
+        }
+        else
+        {   // Read inflame
+            if (_mapItems.containsKey("inflame"))
+            {
+                listInflame = findMaterials((ArrayList<String>) _mapItems.get("inflame"),
+                                            (Material itemMaterial) -> { return true; },
+                                            (Material itemMaterial) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add inflame '" + itemMaterial.name() + "'"); },
+                                            (Material itemMaterial) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + itemMaterial.name() + "' that is not valid to inflame, material ignored"); }
+                                           );
+
+            }
+            if (_mapItems.containsKey("extinguish"))
+            {
+                listExtinguish = findMaterials((ArrayList<String>) _mapItems.get("extinguish"),
+                                               (Material itemMaterial) -> { return true; },
+                                               (Material itemMaterial) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add extinguish '" + itemMaterial.name() + "'"); },
+                                               (Material itemMaterial) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + itemMaterial.name() + "' that is not valid to extinguish, material ignored"); }
+                                              );
+
+            }
+        }
+        if (listInflame.isEmpty() && listExtinguish.isEmpty())
+        {   // Should have at least one of both
+            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no material found for at least one of both inflame / extinguish, ignored!");
+            // bRet = false; No, not a critical error, just ignore __FIRE__ configuration
+        }
+        lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
+                                 (String strRegionName) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
+                                 (String strRegionName) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
+                                );
+        if (lstRegions.isEmpty())
+        {
+            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no region found, ignored!");
+        }
+        else
+        {   // All is OK, add it
+            InformationsFireMaterial infos = new InformationsFireMaterial();
+            infos.m_lstMaterials           = new HashSet<>(listMaterial);
+            infos.m_lstInflameMaterials    = new HashSet<>(listInflame);
+            infos.m_lstExtinguishMaterials = new HashSet<>(listExtinguish);
+            infos.m_lstRegions             = lstRegions;
+            // To optimize time search, combine world name with material
+            for (String strRegionName : lstRegions)
+            {
+                for (Material material : listMaterial)
+                {
+                    String strKey = strRegionName + "_._" + material.name();
+                    if (m_mapInformationsFireMaterial.containsKey(strKey))
+                    {
+                        getPlugin().getLogger().severe("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
+                        bRet = false;
+                        break;
+                    }
+                    m_mapInformationsFireMaterial.put(strKey, infos);
+                }
+                if (!bRet)
+                {
+                    break;
+                }
+            }
+        }
+
+        return bRet;
+    }
+
+    /**
+     * Display material available for this material type.
+     */
+    @Override
+    public void displayMaterials()
+    {
+        getPlugin().getLogger().info("Display material for " + getMaterialType());
+        getPlugin().getLogger().info("🔥 = Flammable / B = Burnable / 🛢 = Is Fuel");
+        for (Material material : Material.values())
+        {
+            if (material.isFlammable() || material.isBurnable() || material.isFuel())
+            {
+                StringBuilder strInfos;
+                strInfos = new StringBuilder(material.isFlammable() ? "🔥 / " : "☐ / ");
+                strInfos.append(material.isBurnable() ? "B / " : "☐ / ");
+                strInfos.append(material.isFuel() ? "🛢" : "☐");
+
+                getPlugin().getLogger().info(strInfos.toString() + " ==> " + material.name());
+            }
+        }
+    }
+
+    /**
+     * Manage player interaction
+     *
+     * @param _event Event.
+     * @param _block Block that the user clic.
+     * @param _world Current player world.
+     * @param _setCurrentRegions list of region where player is actually.
+     * @return true if something is done, false else.
+     */
+    @Override
+    public boolean managePlayerInteraction(PlayerInteractEvent _event, Block _block, World _world, Set<String> _setCurrentRegions)
+    {
+        boolean bRet = false;
+
+        for (String strRegionName : _setCurrentRegions)
+        {
+            String key = _world.getName() + "." + strRegionName + "_._" + _block.getBlockData().getMaterial().name();
+            if (m_mapInformationsFireMaterial.containsKey(key))
+            {
+                InformationsFireMaterial infosFire = m_mapInformationsFireMaterial.get(key);
+                // Here, we are sure, _block.getType() is Flammable
+                if (_block.getBlockData() instanceof Lightable)
+                {
+                    Lightable lightableBlockData = (Lightable) _block.getBlockData();
+                    ItemStack item = _event.getItem();
+                    Material tool = item != null ? item.getType() : Material.AIR;
+                    boolean bHasLitUnlit = false;
+
+                    if (lightableBlockData.isLit())
+                    {   // 🔥 Stop fire with hand or shovel or other (in m_lstExtinguishMaterials)
+                        if (infosFire.m_lstExtinguishMaterials.contains(tool))
+                        {
+                            lightableBlockData.setLit(false);
+                            _block.setBlockData(lightableBlockData);
+                            _block.getWorld().playSound(_block.getLocation(), "block.fire.extinguish", 1.0f, 1.0f);
+                            _event.setCancelled(true);
+                            bHasLitUnlit = true;
+                        }
+                    }
+                    else
+                    {   // 🔥 Start fire with fire charge or flint and steel or other
+                        if (infosFire.m_lstInflameMaterials.contains(tool))
+                        {
+                            lightableBlockData.setLit(true);
+                            _block.setBlockData(lightableBlockData);
+                            _block.getWorld().playSound(_block.getLocation(), "item.flintandsteel.use", 1.0f, 1.0f);
+                            _event.setCancelled(true);
+                            bHasLitUnlit = true;
+
+                            String str1 = _block.getBlockData().getSoundGroup().getBreakSound().name();
+                            String str2 = _block.getBlockData().getSoundGroup().getFallSound().name();
+                            String str3 = _block.getBlockData().getSoundGroup().getHitSound().name();
+                            String str4 = _block.getBlockData().getSoundGroup().getPlaceSound().name();
+                            String str5 = _block.getBlockData().getSoundGroup().getStepSound().name();
+                            //item.firecharge.use
+                        }
+                    }
+                    if (bHasLitUnlit)
+                    {
+                        // Reduce durability or consume item (if not creative mode)
+                        Player player = _event.getPlayer();
+                        if (player.getGameMode() != GameMode.CREATIVE && _event.getHand() != null)
+                        {
+                            item = player.getInventory().getItem(_event.getHand());
+
+                            if (item != null && item.getItemMeta() instanceof Damageable)
+                            {
+                                Damageable domageableItem = (Damageable) item.getItemMeta();
+                                int iDommage = domageableItem.getDamage();
+
+                                if (iDommage + 1 >= item.getType().getMaxDurability())
+                                {
+                                    item.setAmount(item.getAmount() - 1);
+                                }
+                                else
+                                {
+                                    domageableItem.setDamage(iDommage + 1);
+                                    item.setItemMeta(domageableItem);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // done
+                bRet = true;
+                break;
+            }
+        }
+
+        return bRet;
+    }
+}

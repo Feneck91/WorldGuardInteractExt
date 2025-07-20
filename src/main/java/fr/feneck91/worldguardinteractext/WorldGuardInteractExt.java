@@ -1,11 +1,15 @@
 package fr.feneck91.worldguardinteractext;
 
+import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.block.data.type.Campfire;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -23,6 +27,7 @@ import com.sk89q.worldguard.protection.regions.RegionContainer;
 import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.List;
@@ -36,27 +41,34 @@ import java.util.stream.Collectors;
 public class WorldGuardInteractExt extends JavaPlugin implements Listener
 {
     /**
-     * Class to manage material than can be survey.
+     * Is verbose log enabled?
      */
-    public static class MaterialSurvey
-    {
-        /**
-         * Material that can be manage.
-         */
-        private Material        m_material;
+    private boolean         m_bIsVerboseLogEnabled;
 
-        /**
-         * Region allowed to manage this material.
-         */
-        private Set<String>     m_lstRegionsNames;
-    };
-    
     /**
-     * Is log enabled?
+     * Configuration
      */
-    private boolean         m_bIsLogEnabled;
-    //private Map<String, >   m_allowedRegionsNames;
-    //private Material extinguishItem;
+    private MaterialConfig  m_materialConfig;
+
+    /**
+     * Constructor.
+     */
+    public WorldGuardInteractExt()
+    {
+        m_bIsVerboseLogEnabled = false;
+        // Default config with nothing into it
+        m_materialConfig = new MaterialConfig(this);
+    }
+
+    /**
+     * Is verbose log enabled?
+     *
+     * @return true if enables, false else.
+     */
+    public boolean IsVerboseLogEnabled()
+    {
+        return m_bIsVerboseLogEnabled;
+    }
 
     /**
      * Called when plugin is activated.
@@ -66,9 +78,9 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @Override
     public void onEnable()
     {
+        getServer().getPluginManager().registerEvents(this, this);
         if (readConfiguration())
         {
-            getServer().getPluginManager().registerEvents(this, this);
             getLogger().info("WorldGuardInteractExt activated!");
         }
     }
@@ -81,6 +93,8 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @Override
     public void onDisable()
     {
+        HandlerList.unregisterAll();
+        m_materialConfig.clearAll();
         getLogger().info("WorldGuardInteractExt deactivated!");
     }
 
@@ -92,65 +106,94 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     private boolean readConfiguration()
     {
         boolean bRet = false;
-        saveDefaultConfig();
-        FileConfiguration config = getConfig();
-        // Reading config
-        m_bIsLogEnabled = config.getBoolean("enable_logs");
 
-        for (Map<?, ?> itemlist : config.getMapList("items"))
-        {   // Iterate across the List of Maps in the config
-            Map<String, Object> mapItems = (Map<String, Object>) itemlist;
-            mapItems.get("type");
-            "__FIRE__";
-            for (Map.Entry<String, Object> entry : mapItems.entrySet())
+        // Will save only if the file doesn't exists
+        // If readConfiguration() is called because operator make a reload command (wgiextreload), he may
+        // have deleted this file to get new one.
+        saveDefaultConfig();
+
+        try
+        {
+            FileConfiguration config = getConfig();
+            // Reading config
+            m_bIsVerboseLogEnabled = config.getBoolean("enable_verbose_logs");
+            if (IsVerboseLogEnabled())
             {
-                String strKey = entry.getKey();
-                if (m_bIsLogEnabled)
+                getLogger().info("Reading configuration");
+            }
+            MaterialConfig materialConfig = new MaterialConfig(this);
+            if (materialConfig.RaadConfig(config))
+            {
+                m_materialConfig = materialConfig;
+                bRet = true;
+            }
+        }
+        catch(Exception _ex)
+        {
+            getLogger().severe("WorldGuardInteractExt::readConfiguration(), exception: " + _ex.getMessage());
+            getLogger().severe("Previous configuration is keep.");
+        }
+
+        return bRet;
+    }
+
+    @Override
+    public boolean onCommand(CommandSender _sender, Command _command, String _strLabel, String[] _args)
+    {
+        boolean bRet = false;
+
+        if (_command.getName().equalsIgnoreCase("wgiextmaterials"))
+        {
+            if (!_sender.hasPermission("wgiext.materials"))
+            {
+                _sender.sendMessage(ChatColor.RED + "You don't have permission to execute this command!");
+            }
+            else if (_args.length != 1)
+            {
+                _sender.sendMessage(ChatColor.RED + "One an only one argument is needed for this command!");
+            }
+            else
+            {
+                m_materialConfig.displayMaterials(_args[0]);
+            }
+        }
+        else if (_command.getName().equalsIgnoreCase("wgiextreload"))
+        {
+            if (!_sender.hasPermission("wgiext.reload"))
+            {
+                _sender.sendMessage(ChatColor.RED + "You don't have permission to execute this command!");
+            }
+            else if (_args.length != 0)
+            {
+                _sender.sendMessage(ChatColor.RED + "No argument needed for this command!");
+            }
+            else
+            {
+                // Reload configuration here
+                if (readConfiguration())
                 {
-                    getLogger().info("Entry Key = " + strKey);
+                    _sender.sendMessage(ChatColor.GREEN + "WorldGuardInteractExt configuration reloaded successfully.");
+                    bRet = true;
+                }
+                else
+                {
+                    _sender.sendMessage(ChatColor.RED + "Error while reloading WorldGuardInteractExt configuration!");
                 }
             }
         }
-        bRet = true;
-        /*
-        Material.CAMPFIRE.name();
-        Material.SOUL_CAMPFIRE.name();
-        Material.CAMPFIRE.name()
-        static Material
-        getMaterial(String name)
-
-
-        Material.SOUL_CAMPFIRE
-        Map<>
-        m_allowedRegionsNames = config.getStringList("enable_log");
-        extinguishItem = Material.getMaterial(config.getString("extinguish-item", "STICK"));
-        */
         return bRet;
     }
-/*
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onPlayerInteract(PlayerInteractEvent event)
+    public void onPlayerInteract(PlayerInteractEvent _event)
     {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK)
+        Block block = _event.getClickedBlock();
+        if (block != null)
         {
-            return;
+            m_materialConfig.managePlayerInteraction(_event);
         }
-        Block block = event.getClickedBlock();
-        if (block == null || block.getType() != Material.CAMPFIRE)
-        {
-            return;
-        }
-        
-        Player player = event.getPlayer();
-        ItemStack item = player.getInventory().getItemInMainHand();
-        if (item == null || item.getType() != extinguishItem) return;
-
-        if (!isInAllowedRegion(player)) return;
-
-        block.setType(Material.SOUL_CAMPFIRE);
-        player.sendMessage("§bFeu éteint !");
     }
-*/
+/*
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCampfireClick(PlayerInteractEvent _event)
     {
@@ -218,26 +261,5 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
             }
         }
     }
-
-    private boolean isInAllowedRegion(Player player)
-    {
-        boolean bRet = false;
-        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-        RegionManager manager = container.get(BukkitAdapter.adapt(player.getWorld()));
-        if (manager != null)
-        {
-            ApplicableRegionSet regionSet = manager.getApplicableRegions(BukkitAdapter.asBlockVector(player.getLocation()));
-            Set<String> currentRegions = regionSet.getRegions().stream().map(ProtectedRegion::getId).collect(Collectors.toSet());
-            /*
-            for (String region : m_allowedRegionsNames)
-            {
-                if (currentRegions.contains(region)) 
-                {
-                    bRet = true;
-                    break;
-                }
-            }*/
-        }
-        return bRet;
-    }
+*/
 }
