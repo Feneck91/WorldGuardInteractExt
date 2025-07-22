@@ -1,16 +1,20 @@
 package fr.feneck91.worldguardinteractext;
 
+import com.sk89q.worldguard.LocalPlayer;
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.session.Session;
+import com.sk89q.worldguard.session.SessionManager;
+import com.sk89q.worldguard.session.handler.Handler;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.player.PlayerInteractAtEntityEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerItemBreakEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.block.Block;
@@ -22,6 +26,11 @@ import org.bukkit.block.Block;
  */
 public class WorldGuardInteractExt extends JavaPlugin implements Listener
 {
+    /**
+     * Unique instance.
+     */
+    static private WorldGuardInteractExt s_instance = null;
+
     /**
      * Is verbose log enabled?
      */
@@ -43,6 +52,16 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     }
 
     /**
+     * Get the instance.
+     *
+     * @return The unique instance of this plugin.
+     */
+    public static WorldGuardInteractExt getInstance()
+    {
+        return s_instance;
+    }
+
+    /**
      * Is verbose log enabled?
      *
      * @return true if enables, false else.
@@ -53,6 +72,17 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     }
 
     /**
+     * Indicate if next PlaceEvent should be canceled or not.
+     *
+     * @param _player Info for this player.
+     * @return true if flag was previously set to true, false else.
+     */
+    public boolean isNextPlaceEventShouldBeCanceled(Player _player)
+    {
+        return m_materialConfig.isNextPlaceEventShouldBeCanceled(_player);
+    }
+
+    /**
      * Called when plugin is activated.
      * <p>
      * Used to read the current configuration.
@@ -60,6 +90,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @Override
     public void onEnable()
     {
+        s_instance = this;
         getServer().getPluginManager().registerEvents(this, this);
         if (readConfiguration())
         {
@@ -78,6 +109,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @Override
     public void onDisable()
     {
+        s_instance = null;
         HandlerList.unregisterAll();
         if (IsVerboseLogEnabled())
         {
@@ -186,7 +218,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     }
 
     /**
-     * When block is igoite event.
+     * When block is ignite event.
      *
      * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
      *
@@ -195,7 +227,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onBlockIgnite(BlockIgniteEvent _event)
     {
-        m_materialConfig.clearNextPlaceEventInfos();
+        m_materialConfig.clearNextPlaceEventInfos(_event.getPlayer());
         if (_event.isCancelled())
         {   // Only if WorldGuard has canceled the interaction, else do nothing
             if (   m_materialConfig.manageEvent(_event)
@@ -219,7 +251,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent _event)
     {
-        m_materialConfig.clearNextPlaceEventInfos();
+        m_materialConfig.clearNextPlaceEventInfos(_event.getPlayer());
         if (_event.useItemInHand() == Event.Result.DENY || _event.useInteractedBlock() == Event.Result.DENY)
         {   // Only if WorldGuard has canceled the interaction, else do nothing
             Block block = _event.getClickedBlock();

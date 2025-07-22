@@ -16,10 +16,7 @@ import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -40,16 +37,12 @@ public class MaterialConfig
     private HashMap<String, IMaterialManager> m_mapMaterialManagers;
 
     /**
-     * Is next place event could  be canceled?
-     */
-    private boolean m_bIsNextPlaceEventCouldBeCanceled;
-
-    /**
      * Next PlaceEvent block.
      *
      * Used to quickly check if PlaceEvent will use this block, to reactivate the cancel event.
+     * Key is the player name.
      */
-    private Block m_nextPlaceEventBlock;
+    private Map<UUID, Block> m_mapNextPlaceEventBlock;
 
     /**
      * Constructor.
@@ -59,8 +52,7 @@ public class MaterialConfig
     public MaterialConfig(WorldGuardInteractExt _plugin)
     {
         m_plugin = _plugin;
-        m_bIsNextPlaceEventCouldBeCanceled = false;
-        m_nextPlaceEventBlock = null;
+        m_mapNextPlaceEventBlock = new HashMap<UUID, Block>();
 
         // Initialize all available materials
         m_mapMaterialManagers = new HashMap<String, IMaterialManager>();
@@ -79,20 +71,26 @@ public class MaterialConfig
 
     /**
      * Clear flag that indicate next PlaceEvent could be re-activated.
+     *
+     * @param _player Infos for this player.
      */
-    public void clearNextPlaceEventInfos()
+    public void clearNextPlaceEventInfos(Player _player)
     {
-        m_bIsNextPlaceEventCouldBeCanceled = false;
+        if (_player != null)
+        {
+            m_mapNextPlaceEventBlock.remove(_player.getUniqueId());
+        }
     }
 
     /**
-     * Indicate if next PlaceEvent could be canceled or not.
+     * Indicate if next PlaceEvent should be canceled or not.
      *
+     * @param _player Info for this player.
      * @return true if flag was previously set to true, false else.
      */
-    public boolean isNextPlaceEventCouldBeCanceled()
+    public boolean isNextPlaceEventShouldBeCanceled(Player _player)
     {
-        return m_bIsNextPlaceEventCouldBeCanceled;
+        return _player != null && m_mapNextPlaceEventBlock.containsKey(_player.getUniqueId());
     }
 
     /**
@@ -146,12 +144,14 @@ public class MaterialConfig
     public boolean manageBlockPlaceEvent(BlockPlaceEvent _event)
     {
         boolean bRet = false;
-        if (m_bIsNextPlaceEventCouldBeCanceled)
+        if (m_mapNextPlaceEventBlock.containsKey(_event.getPlayer().getUniqueId()))
         {
-            m_bIsNextPlaceEventCouldBeCanceled = false;
             if (   _event.isCancelled()
                 // Here, not sure the block is same, often it is not the same ! So just verify plugin is waiting block change at this location
-                && (m_nextPlaceEventBlock != null && m_nextPlaceEventBlock.getLocation().equals(_event.getBlock().getLocation())))
+                && (   m_mapNextPlaceEventBlock.containsKey(_event.getPlayer().getUniqueId())
+                    && m_mapNextPlaceEventBlock.get(_event.getPlayer().getUniqueId()).getLocation().equals(_event.getBlock().getLocation())
+                   )
+               )
             {
                 bRet = true;
                 _event.setCancelled(false);
@@ -174,7 +174,7 @@ public class MaterialConfig
         if (_event instanceof Cancellable eventCancellable)
         {
             RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-            Player player = null;
+            Player player;
             Block block = null;
 
             if (_event instanceof PlayerInteractEvent playerInteractEvent)
@@ -186,6 +186,10 @@ public class MaterialConfig
             {
                 player = blockIgniteEvent.getPlayer();
                 block = blockIgniteEvent.getBlock();
+            }
+            else
+            {
+                player = null;
             }
             if (player != null)
             {
@@ -205,8 +209,7 @@ public class MaterialConfig
                         {
                             if (materialManager.managePlayerInteraction(_event, block, world, strCurrentPlayerRegionName, (Block _block) ->
                             {   // Re-actiuate the event
-                                m_bIsNextPlaceEventCouldBeCanceled = true;
-                                m_nextPlaceEventBlock = _block;
+                                m_mapNextPlaceEventBlock.put(player.getUniqueId(), _block);
                                 eventCancellable.setCancelled(false);
                             }))
                             {   // Ok, done. Should I continue?
