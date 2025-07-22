@@ -1,37 +1,19 @@
 package fr.feneck91.worldguardinteractext;
 
 import org.bukkit.ChatColor;
-import org.bukkit.GameMode;
-import org.bukkit.Material;
-import org.bukkit.block.data.type.Campfire;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
+import org.bukkit.event.*;
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemBreakEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.entity.Player;
 import org.bukkit.block.Block;
-import org.bukkit.inventory.ItemStack;
-
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
-import com.sk89q.worldguard.protection.managers.RegionManager;
-import com.sk89q.worldguard.protection.regions.RegionContainer;
-import com.sk89q.worldguard.protection.ApplicableRegionSet;
-import com.sk89q.worldguard.protection.regions.ProtectedRegion;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Base class to manage plugin.
@@ -81,7 +63,10 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
         getServer().getPluginManager().registerEvents(this, this);
         if (readConfiguration())
         {
-            getLogger().info("WorldGuardInteractExt activated!");
+            if (IsVerboseLogEnabled())
+            {
+                getLogger().info("WorldGuardInteractExt activated!");
+            }
         }
     }
 
@@ -94,8 +79,10 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     public void onDisable()
     {
         HandlerList.unregisterAll();
-        m_materialConfig.clearAll();
-        getLogger().info("WorldGuardInteractExt deactivated!");
+        if (IsVerboseLogEnabled())
+        {
+            getLogger().info("WorldGuardInteractExt deactivated!");
+        }
     }
 
     /**
@@ -184,82 +171,73 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
         return bRet;
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onPlayerInteract(PlayerInteractEvent _event)
+    /**
+     * When block change, verify it it should be reactivated.
+     *
+     * @param _event The event.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockPlaceEvent(BlockPlaceEvent _event)
     {
-        Block block = _event.getClickedBlock();
-        if (block != null)
+        if (m_materialConfig.manageBlockPlaceEvent(_event) && IsVerboseLogEnabled())
         {
-            m_materialConfig.managePlayerInteraction(_event);
+            getLogger().info("Block place event canceled by WorldGuard is reactivated!");
         }
     }
-/*
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onCampfireClick(PlayerInteractEvent _event)
+
+    /**
+     * When block is igoite event.
+     *
+     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
+     *
+     * @param _event The event
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockIgnite(BlockIgniteEvent _event)
     {
-        if (_event.getHand() != EquipmentSlot.HAND)
-        {
-            return; // To not do more than once with OFF_HAND
-        }
-
-        if (_event.getClickedBlock() == null)
-        {
-            return;
-        }
-
-        Block block = _event.getClickedBlock();
-        if (block.getType() != Material.CAMPFIRE && block.getType() != Material.SOUL_CAMPFIRE)
-        {
-            return;
-        }
-
-        if (!(block.getBlockData() instanceof Campfire))
-        {
-            return;
-        }
-        
-        Campfire campfire = (Campfire) block.getBlockData();
-        Player player = _event.getPlayer();
-        ItemStack item = _event.getItem();
-        Material tool = item != null ? item.getType() : Material.AIR;
-
-        if (campfire.isLit())
-        {   // 🔥 Stop fire with hand or shovel
-            if (tool == Material.AIR || tool.name().endsWith("_SHOVEL"))
+        m_materialConfig.clearNextPlaceEventInfos();
+        if (_event.isCancelled())
+        {   // Only if WorldGuard has canceled the interaction, else do nothing
+            if (   m_materialConfig.manageEvent(_event)
+                && IsVerboseLogEnabled()
+                && !_event.isCancelled()
+               )
             {
-                campfire.setLit(false);
-                block.setBlockData(campfire);
-                block.getWorld().playSound(block.getLocation(), "block.fire.extinguish", 1.0f, 1.0f);
-                _event.setCancelled(true);
+                getLogger().info("Block ignite interaction canceled by WorldGuard is reactivated!");
             }
         }
-        else
-        {   // 🔥 Start fire with fire charge or flint and steel
-            if (tool == Material.FLINT_AND_STEEL || tool == Material.FIRE_CHARGE)
-            {
-                campfire.setLit(true);
-                block.setBlockData(campfire);
-                block.getWorld().playSound(block.getLocation(), "item.flintandsteel.use", 1.0f, 1.0f);
-                _event.setCancelled(true);
+    }
 
-                // Reduce durability or consume item (if not creative mode)
-                if (player.getGameMode() != GameMode.CREATIVE)
-                {
-                    if (tool == Material.FLINT_AND_STEEL)
+    /**
+     * When player make event.
+     *
+     * Check if it must be uncanceled.
+     *
+     *
+     * @param _event The event
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onPlayerInteract(PlayerInteractEvent _event)
+    {
+        m_materialConfig.clearNextPlaceEventInfos();
+        if (_event.useItemInHand() == Event.Result.DENY || _event.useInteractedBlock() == Event.Result.DENY)
+        {   // Only if WorldGuard has canceled the interaction, else do nothing
+            Block block = _event.getClickedBlock();
+            if (block != null)
+            {
+                if (_event.getHand() == EquipmentSlot.HAND)
+                {   // Remove 2 call with OFF_HAND
+                    if (   m_materialConfig.manageEvent(_event)
+                        && IsVerboseLogEnabled()
+                        && (   _event.useItemInHand() != Event.Result.DENY
+                            && _event.useInteractedBlock() != Event.Result.DENY
+                           )
+                       )
                     {
-                        item.setDurability((short)(item.getDurability() + 1));
-                        if (item.getDurability() >= item.getType().getMaxDurability())
-                        {
-                            player.getInventory().getItem(_event.getHand()).setAmount(0);
-                        }
-                    }
-                    else if (tool == Material.FIRE_CHARGE)
-                    {
-                        item.setAmount(item.getAmount() - 1);
+                        getLogger().info("Player interaction canceled by WorldGuard is reactivated!");
                     }
                 }
             }
         }
     }
-*/
 }

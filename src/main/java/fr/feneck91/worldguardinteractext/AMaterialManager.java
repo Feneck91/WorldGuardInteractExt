@@ -125,7 +125,6 @@ public abstract class AMaterialManager  implements IMaterialManager
         return listMaterials;
     }
 
-
     /**
      * Get a list of regions names from a _listRegionsNames.
      *

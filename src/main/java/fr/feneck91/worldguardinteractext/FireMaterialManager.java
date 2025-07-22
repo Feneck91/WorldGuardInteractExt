@@ -1,11 +1,15 @@
 package fr.feneck91.worldguardinteractext;
 
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Lightable;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
+import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
+import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
@@ -14,6 +18,8 @@ import org.checkerframework.checker.regex.qual.Regex;
 import org.w3c.dom.DOMStringList;
 
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -207,91 +213,95 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
     /**
      * Manage player interaction
      *
-     * @param _event Event.
+     * @param _event Generic event.
      * @param _block Block that the user clic.
      * @param _world Current player world.
-     * @param _setCurrentRegions list of region where player is actually.
+     * @param _strCurrentPlayerRegionName Current region name where player is located actually.
+     * @param _cancelLambdaAction Lambda that this function MUST call to re-enable event cancelled by WorldGuard. The parameters is Block to uncancel next block placement.
      * @return true if something is done, false else.
      */
     @Override
-    public boolean managePlayerInteraction(PlayerInteractEvent _event, Block _block, World _world, Set<String> _setCurrentRegions)
+    public boolean managePlayerInteraction(Event _event, Block _block, World _world, String _strCurrentPlayerRegionName, Consumer<Block> _cancelLambdaAction)
     {
         boolean bRet = false;
 
-        for (String strRegionName : _setCurrentRegions)
+        String key = _world.getName() + "." + _strCurrentPlayerRegionName + "_._" + _block.getBlockData().getMaterial().name();
+        if (m_mapInformationsFireMaterial.containsKey(key))
         {
-            String key = _world.getName() + "." + strRegionName + "_._" + _block.getBlockData().getMaterial().name();
-            if (m_mapInformationsFireMaterial.containsKey(key))
+            InformationsFireMaterial infosFire = m_mapInformationsFireMaterial.get(key);
+            // Here, we are sure, _block.getType() is Flammable
+            if (_block.getBlockData() instanceof Lightable lightableBlockData)
             {
-                InformationsFireMaterial infosFire = m_mapInformationsFireMaterial.get(key);
-                // Here, we are sure, _block.getType() is Flammable
-                if (_block.getBlockData() instanceof Lightable)
-                {
-                    Lightable lightableBlockData = (Lightable) _block.getBlockData();
-                    ItemStack item = _event.getItem();
-                    Material tool = item != null ? item.getType() : Material.AIR;
-                    boolean bHasLitUnlit = false;
+                Material causeMaterial = null;
 
-                    if (lightableBlockData.isLit())
-                    {   // 🔥 Stop fire with hand or shovel or other (in m_lstExtinguishMaterials)
-                        if (infosFire.m_lstExtinguishMaterials.contains(tool))
-                        {
-                            lightableBlockData.setLit(false);
-                            _block.setBlockData(lightableBlockData);
-                            _block.getWorld().playSound(_block.getLocation(), "block.fire.extinguish", 1.0f, 1.0f);
-                            _event.setCancelled(true);
-                            bHasLitUnlit = true;
+                if (_event instanceof PlayerInteractEvent playerInteractEvent)
+                {
+                    causeMaterial = playerInteractEvent.getItem() == null
+                        ? Material.AIR
+                        : playerInteractEvent.getItem().getType();
+                }
+                else if (_event instanceof BlockIgniteEvent blockIgniteEvent)
+                {
+                    if (blockIgniteEvent.getPlayer() != null)
+                    {   // If the fire ignit with player
+                        causeMaterial = blockIgniteEvent.getPlayer().getInventory().getItemInMainHand().getType();
+                    }
+                    else if (blockIgniteEvent.getIgnitingEntity() != null)
+                    {   // If the fire ignit with entity (like mob, arrow, etc)
+                        Entity igniter = blockIgniteEvent.getIgnitingEntity();
+
+                        if (igniter instanceof Projectile projectile)
+                        {   //  If the fire ignit with a projectile (eg fireball)
+                            if (projectile.getType() == EntityType.SMALL_FIREBALL || projectile.getType() == EntityType.FIREBALL)
+                            {
+                                causeMaterial = Material.FIRE_CHARGE;
+                            }
+                            else
+                            {
+                                causeMaterial = Material.ARROW; // Generic example
+                            }
+                        }
+                        else if (igniter.getType() == EntityType.BLAZE)
+                        {   // Mobs like blaze
+                            causeMaterial = Material.BLAZE_ROD;
+                        }
+                        else
+                        {   // Generic case
+                            causeMaterial = Material.AIR; // ignore (not supported)
                         }
                     }
                     else
-                    {   // 🔥 Start fire with fire charge or flint and steel or other
-                        if (infosFire.m_lstInflameMaterials.contains(tool))
-                        {
-                            lightableBlockData.setLit(true);
-                            _block.setBlockData(lightableBlockData);
-                            _block.getWorld().playSound(_block.getLocation(), "item.flintandsteel.use", 1.0f, 1.0f);
-                            _event.setCancelled(true);
-                            bHasLitUnlit = true;
-
-                            String str1 = _block.getBlockData().getSoundGroup().getBreakSound().name();
-                            String str2 = _block.getBlockData().getSoundGroup().getFallSound().name();
-                            String str3 = _block.getBlockData().getSoundGroup().getHitSound().name();
-                            String str4 = _block.getBlockData().getSoundGroup().getPlaceSound().name();
-                            String str5 = _block.getBlockData().getSoundGroup().getStepSound().name();
-                            //item.firecharge.use
-                        }
-                    }
-                    if (bHasLitUnlit)
                     {
-                        // Reduce durability or consume item (if not creative mode)
-                        Player player = _event.getPlayer();
-                        if (player.getGameMode() != GameMode.CREATIVE && _event.getHand() != null)
+                        switch (blockIgniteEvent.getCause())
                         {
-                            item = player.getInventory().getItem(_event.getHand());
-
-                            if (item != null && item.getItemMeta() instanceof Damageable)
-                            {
-                                Damageable domageableItem = (Damageable) item.getItemMeta();
-                                int iDommage = domageableItem.getDamage();
-
-                                if (iDommage + 1 >= item.getType().getMaxDurability())
-                                {
-                                    item.setAmount(item.getAmount() - 1);
-                                }
-                                else
-                                {
-                                    domageableItem.setDamage(iDommage + 1);
-                                    item.setItemMeta(domageableItem);
-                                }
-                            }
+                            case LAVA           -> causeMaterial = Material.LAVA;
+                            case LIGHTNING      -> causeMaterial = Material.LIGHTNING_ROD;
+                            case EXPLOSION      -> causeMaterial = Material.TNT;
+                            case ENDER_CRYSTAL  -> causeMaterial = Material.END_CRYSTAL;
+                            case SPREAD         -> causeMaterial = Material.FIRE;
+                            default             -> causeMaterial = Material.AIR; // ignore (not supported)
                         }
                     }
                 }
-
-                // done
-                bRet = true;
-                break;
+                if (lightableBlockData.isLit())
+                {   // 🔥 Stop fire with hand or shovel or other (in m_lstExtinguishMaterials)
+                    if (infosFire.m_lstExtinguishMaterials.contains(causeMaterial))
+                    {
+                        bRet = true; // done
+                        _cancelLambdaAction.accept(_block);
+                    }
+                }
+                else
+                {   // 🔥 Start fire with fire charge or flint and steel or other
+                    if (infosFire.m_lstInflameMaterials.contains(causeMaterial))
+                    {
+                        bRet = true; // done
+                        _cancelLambdaAction.accept(_block);
+                    }
+                }
             }
+            // Event is tested, not sur we must continue to search even the test failed
+            bRet = true; // done
         }
 
         return bRet;

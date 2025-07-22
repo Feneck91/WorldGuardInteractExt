@@ -9,7 +9,14 @@ import com.sk89q.worldguard.protection.regions.RegionContainer;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -30,7 +37,19 @@ public class MaterialConfig
      *
      * The key is the super type (__FIRE__, __FIELD__, etc)
      */
-    private static HashMap<String, IMaterialManager> s_mapMaterialManagers;
+    private HashMap<String, IMaterialManager> m_mapMaterialManagers;
+
+    /**
+     * Is next place event could  be canceled?
+     */
+    private boolean m_bIsNextPlaceEventCouldBeCanceled;
+
+    /**
+     * Next PlaceEvent block.
+     *
+     * Used to quickly check if PlaceEvent will use this block, to reactivate the cancel event.
+     */
+    private Block m_nextPlaceEventBlock;
 
     /**
      * Constructor.
@@ -40,11 +59,12 @@ public class MaterialConfig
     public MaterialConfig(WorldGuardInteractExt _plugin)
     {
         m_plugin = _plugin;
-        if (s_mapMaterialManagers == null)
-        {   // Initialize all available materials
-            s_mapMaterialManagers = new HashMap<String, IMaterialManager>();
-            s_mapMaterialManagers.put(FireMaterialManager.MATERIAL_TYPE, new FireMaterialManager(_plugin));
-        }
+        m_bIsNextPlaceEventCouldBeCanceled = false;
+        m_nextPlaceEventBlock = null;
+
+        // Initialize all available materials
+        m_mapMaterialManagers = new HashMap<String, IMaterialManager>();
+        m_mapMaterialManagers.put(FireMaterialManager.MATERIAL_TYPE, new FireMaterialManager(_plugin));
     }
 
     /**
@@ -58,11 +78,21 @@ public class MaterialConfig
     }
 
     /**
-     * Clear the content of the class.
+     * Clear flag that indicate next PlaceEvent could be re-activated.
      */
-    public void clearAll()
+    public void clearNextPlaceEventInfos()
     {
-        s_mapMaterialManagers = null;
+        m_bIsNextPlaceEventCouldBeCanceled = false;
+    }
+
+    /**
+     * Indicate if next PlaceEvent could be canceled or not.
+     *
+     * @return true if flag was previously set to true, false else.
+     */
+    public boolean isNextPlaceEventCouldBeCanceled()
+    {
+        return m_bIsNextPlaceEventCouldBeCanceled;
     }
 
     /**
@@ -79,13 +109,13 @@ public class MaterialConfig
             Map<String, Object> mapItems = (Map<String, Object>) itemlist;
             String strMaterialType = (String) mapItems.get("type"); // If not exist or bad type, exception is raised
 
-            if (s_mapMaterialManagers.containsKey(strMaterialType))
+            if (m_mapMaterialManagers.containsKey(strMaterialType))
             {
                 if (m_plugin.IsVerboseLogEnabled())
                 {
                     m_plugin.getLogger().info("Reading material = " + strMaterialType);
                 }
-                bRet = ((IMaterialManager) s_mapMaterialManagers.get(strMaterialType)).readConfig(mapItems);
+                bRet = ((IMaterialManager) m_mapMaterialManagers.get(strMaterialType)).readConfig(mapItems);
                 if (!bRet)
                 {   // Configuration is not good
                     break;
@@ -103,28 +133,88 @@ public class MaterialConfig
     }
 
     /**
-     * Manage user interaction.
+     * Manage PlaceBlock event.
+     *
+     * When managePlayerInteraction function detect that a canceled action was done by WorldGuard, it re-activate
+     * the event and record block material and location.
+     * Then, just after the PlayerInteractEvent, if BlockPlaceEvent is called by Minecraft framework with these
+     * informations, this plugin must re-activate event too (example, put fire on camp fire will modify block too).
      *
      * @param _event Player event. event.getClickedBlock() is not null else we don't go there.
-     * @return true if one manage interaction, false else.
+     * @return true if the event is re-activated.
      */
-    public boolean managePlayerInteraction(PlayerInteractEvent _event)
+    public boolean manageBlockPlaceEvent(BlockPlaceEvent _event)
     {
         boolean bRet = false;
-        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-        World world = _event.getPlayer().getWorld();
-        Block block = _event.getClickedBlock();
-        RegionManager manager = container.get(BukkitAdapter.adapt(world));
-        if (manager != null)
+        if (m_bIsNextPlaceEventCouldBeCanceled)
         {
-            ApplicableRegionSet regionSet = manager.getApplicableRegions(BukkitAdapter.asBlockVector(_event.getPlayer().getLocation()));
-            Set<String> currentRegions = regionSet.getRegions().stream().map(ProtectedRegion::getId).collect(Collectors.toSet());
-            for (IMaterialManager materialManager : s_mapMaterialManagers.values())
+            m_bIsNextPlaceEventCouldBeCanceled = false;
+            if (   _event.isCancelled()
+                // Here, not sure the block is same, often it is not the same ! So just verify plugin is waiting block change at this location
+                && (m_nextPlaceEventBlock != null && m_nextPlaceEventBlock.getLocation().equals(_event.getBlock().getLocation())))
             {
-                if (materialManager.managePlayerInteraction(_event, block, world, currentRegions))
-                {   // Ok, done. Should I continue?
-                    bRet = true;
-                    break;
+                bRet = true;
+                _event.setCancelled(false);
+            }
+        }
+
+        return bRet;
+    }
+
+    /**
+     * Manage user interaction.
+     *
+     * @param _event Generic event.
+     * @return true if one manage interaction, false else.
+     */
+    public boolean manageEvent(Event _event)
+    {
+        boolean bRet = false;
+
+        if (_event instanceof Cancellable eventCancellable)
+        {
+            RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+            Player player = null;
+            Block block = null;
+
+            if (_event instanceof PlayerInteractEvent playerInteractEvent)
+            {
+                player = playerInteractEvent.getPlayer();
+                block = playerInteractEvent.getClickedBlock();
+            }
+            else if (_event instanceof BlockIgniteEvent blockIgniteEvent)
+            {
+                player = blockIgniteEvent.getPlayer();
+                block = blockIgniteEvent.getBlock();
+            }
+            if (player != null)
+            {
+                World world = player.getWorld();
+                RegionManager manager = container.get(BukkitAdapter.adapt(world));
+                if (manager != null)
+                {
+                    ApplicableRegionSet regionSet = manager.getApplicableRegions(BukkitAdapter.asBlockVector(player.getLocation()));
+                    // Take region with highter priority
+                    String strCurrentPlayerRegionName = regionSet.getRegions().stream()
+                                                        .max(Comparator.comparingInt(ProtectedRegion::getPriority))
+                                                        .map(ProtectedRegion::getId)
+                                                        .orElse(null);
+                    if (strCurrentPlayerRegionName != null)
+                    {
+                        for (IMaterialManager materialManager : m_mapMaterialManagers.values())
+                        {
+                            if (materialManager.managePlayerInteraction(_event, block, world, strCurrentPlayerRegionName, (Block _block) ->
+                            {   // Re-actiuate the event
+                                m_bIsNextPlaceEventCouldBeCanceled = true;
+                                m_nextPlaceEventBlock = _block;
+                                eventCancellable.setCancelled(false);
+                            }))
+                            {   // Ok, done. Should I continue?
+                                bRet = true;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -138,9 +228,9 @@ public class MaterialConfig
      */
     public void displayMaterials(String _strMaterialType)
     {
-        if (s_mapMaterialManagers.containsKey(_strMaterialType))
+        if (m_mapMaterialManagers.containsKey(_strMaterialType))
         {   // If exists, display
-            ((IMaterialManager) s_mapMaterialManagers.get(_strMaterialType)).displayMaterials();
+            ((IMaterialManager) m_mapMaterialManagers.get(_strMaterialType)).displayMaterials();
         }
         else
         {   // If not exists, warn the user
