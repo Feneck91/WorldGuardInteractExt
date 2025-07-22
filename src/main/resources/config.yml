@@ -10,6 +10,8 @@
 # REMEMBER TO KEEP PERIODICAL BACKUPS.
 #
 # AIR is used when user has no item into his hand
+# If action is not possible by Minecraft, even you put material, it will not work!
+# For __FIRE__, if you put AIR into extinguish, you will not able to extinguish fire with hand without any tools.
 
 # Will display log while block interaction, make more easy to debug and configure
 # By default verbose log is false
@@ -25,6 +27,6 @@ items:
       # regions: ["myworld.region_1", "myworld.region_2"],
       regions: [], # All regions
       inflame: ["FLINT_AND_STEEL", "FIRE_CHARGE"],
-      extinguish: ["AIR", ".+_SHOVEL"],
+      extinguish: [".+_SHOVEL"],
     }
   ]
