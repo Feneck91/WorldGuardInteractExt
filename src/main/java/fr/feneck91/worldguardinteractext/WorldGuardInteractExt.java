@@ -156,6 +156,15 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
         return bRet;
     }
 
+    /**
+     * Used when user run a commanbd.
+     *
+     * @param _sender Sender.
+     * @param _command Command.
+     * @param _strLabel Label.
+     * @param _args Argument.
+     * @return true if the command is executed, false else.
+     */
     @Override
     public boolean onCommand(CommandSender _sender, Command _command, String _strLabel, String[] _args)
     {
@@ -208,12 +217,55 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
      *
      * @param _event The event.
      */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onBlockPlaceEvent(BlockPlaceEvent _event)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockPlaceEventLowest(BlockPlaceEvent _event)
     {
-        if (m_materialConfig.manageBlockPlaceEvent(_event) && IsVerboseLogEnabled())
+        if (m_materialConfig.manageBlockPlaceEvent(_event))
         {
-            getLogger().info("Block place event canceled by WorldGuard is reactivated!");
+            _event.setCancelled(true);
+            if (IsVerboseLogEnabled())
+            {
+                getLogger().info("Block place event canceled - WorldGuard will not called");
+            }
+        }
+    }
+
+    /**
+     * When block change, verify it it should be reactivated.
+     *
+     * @param _event The event.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockPlaceEventHighest(BlockPlaceEvent _event)
+    {
+        if (m_materialConfig.manageBlockPlaceEvent(_event))
+        {
+            m_materialConfig.clearNextPlaceEventInfos(_event.getPlayer());
+            _event.setCancelled(false);
+            if (IsVerboseLogEnabled())
+            {
+                getLogger().info("Block place event canceled is reactivated!");
+            }
+        }
+    }
+
+    /**
+     * When block is ignite event.
+     *
+     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
+     *
+     * @param _event The event
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockIgniteLowest(BlockIgniteEvent _event)
+    {
+        if (m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
+        {
+            _event.setCancelled(true); // Block  event
+            if (IsVerboseLogEnabled())
+            {
+                getLogger().info("Block ignite interaction canceled - WorldGuard will not called!");
+            }
         }
     }
 
@@ -227,15 +279,12 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onBlockIgnite(BlockIgniteEvent _event)
     {
-        m_materialConfig.clearNextPlaceEventInfos(_event.getPlayer());
-        if (_event.isCancelled())
+        if (_event.isCancelled() && m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
         {   // Only if WorldGuard has canceled the interaction, else do nothing
-            if (   m_materialConfig.manageEvent(_event)
-                && IsVerboseLogEnabled()
-                && !_event.isCancelled()
-               )
+            _event.setCancelled(false); // Reactivated event
+            if (IsVerboseLogEnabled())
             {
-                getLogger().info("Block ignite interaction canceled by WorldGuard is reactivated!");
+                getLogger().info("Block ignite interaction reactivated!");
             }
         }
     }
@@ -248,26 +297,46 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
      *
      * @param _event The event
      */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onPlayerInteract(PlayerInteractEvent _event)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onPlayerInteractLowest(PlayerInteractEvent _event)
     {
         m_materialConfig.clearNextPlaceEventInfos(_event.getPlayer());
-        if (_event.useItemInHand() == Event.Result.DENY || _event.useInteractedBlock() == Event.Result.DENY)
-        {   // Only if WorldGuard has canceled the interaction, else do nothing
-            Block block = _event.getClickedBlock();
-            if (block != null)
-            {
-                if (_event.getHand() == EquipmentSlot.HAND)
-                {   // Remove 2 call with OFF_HAND
-                    if (   m_materialConfig.manageEvent(_event)
-                        && IsVerboseLogEnabled()
-                        && (   _event.useItemInHand() != Event.Result.DENY
-                            && _event.useInteractedBlock() != Event.Result.DENY
-                           )
-                       )
+        // Only if WorldGuard has canceled the interaction, else do nothing
+        Block block = _event.getClickedBlock();
+        if (block != null)
+        {
+            if (_event.getHand() == EquipmentSlot.HAND)
+            {   // Remove 2 call with OFF_HAND
+                if (m_materialConfig.manageEvent(_event))
+                {
+                    _event.setCancelled(true); // Ignore WorldGuard message and rules
+                    if (IsVerboseLogEnabled())
                     {
-                        getLogger().info("Player interaction canceled by WorldGuard is reactivated!");
+                        getLogger().info("Player interaction canceled - WorldGuard not called!");
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * When player make event.
+     *
+     * Check if it must be uncanceled.
+     *
+     * @param _event The event
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onPlayerInteractHighest(PlayerInteractEvent _event)
+    {
+        if (_event.useItemInHand() == Event.Result.DENY || _event.useInteractedBlock() == Event.Result.DENY)
+        {
+            if (m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
+            {
+                _event.setCancelled(false); // Do the event
+                if (IsVerboseLogEnabled())
+                {
+                    getLogger().info("Player interaction reactivated");
                 }
             }
         }

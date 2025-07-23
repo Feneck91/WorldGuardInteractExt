@@ -146,15 +146,11 @@ public class MaterialConfig
         boolean bRet = false;
         if (m_mapNextPlaceEventBlock.containsKey(_event.getPlayer().getUniqueId()))
         {
-            if (   _event.isCancelled()
-                // Here, not sure the block is same, often it is not the same ! So just verify plugin is waiting block change at this location
-                && (   m_mapNextPlaceEventBlock.containsKey(_event.getPlayer().getUniqueId())
-                    && m_mapNextPlaceEventBlock.get(_event.getPlayer().getUniqueId()).getLocation().equals(_event.getBlock().getLocation())
-                   )
+            if (   m_mapNextPlaceEventBlock.containsKey(_event.getPlayer().getUniqueId())
+                && m_mapNextPlaceEventBlock.get(_event.getPlayer().getUniqueId()).getLocation().equals(_event.getBlock().getLocation())
                )
             {
                 bRet = true;
-                _event.setCancelled(false);
             }
         }
 
@@ -210,7 +206,7 @@ public class MaterialConfig
                             if (materialManager.managePlayerInteraction(_event, block, world, strCurrentPlayerRegionName, (Block _block) ->
                             {   // Re-actiuate the event
                                 m_mapNextPlaceEventBlock.put(player.getUniqueId(), _block);
-                                eventCancellable.setCancelled(false);
+                                //eventCancellable.setCancelled(false);
                             }))
                             {   // Ok, done. Should I continue?
                                 bRet = true;
