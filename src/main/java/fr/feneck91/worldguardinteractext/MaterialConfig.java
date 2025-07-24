@@ -37,12 +37,16 @@ public class MaterialConfig
     private HashMap<String, IMaterialManager> m_mapMaterialManagers;
 
     /**
+     * Is next place event could  be canceled?
+     */
+    private boolean m_bIsNextPlaceEventCouldBeCanceled;
+
+    /**
      * Next PlaceEvent block.
      *
      * Used to quickly check if PlaceEvent will use this block, to reactivate the cancel event.
-     * Key is the player name.
      */
-    private Map<UUID, Block> m_mapNextPlaceEventBlock;
+    private Block m_nextPlaceEventBlock;
 
     /**
      * Constructor.
@@ -52,7 +56,8 @@ public class MaterialConfig
     public MaterialConfig(WorldGuardInteractExt _plugin)
     {
         m_plugin = _plugin;
-        m_mapNextPlaceEventBlock = new HashMap<UUID, Block>();
+        m_bIsNextPlaceEventCouldBeCanceled = false;
+        m_nextPlaceEventBlock = null;
 
         // Initialize all available materials
         m_mapMaterialManagers = new HashMap<String, IMaterialManager>();
@@ -76,21 +81,17 @@ public class MaterialConfig
      */
     public void clearNextPlaceEventInfos(Player _player)
     {
-        if (_player != null)
-        {
-            m_mapNextPlaceEventBlock.remove(_player.getUniqueId());
-        }
+        m_bIsNextPlaceEventCouldBeCanceled = false;
     }
 
     /**
-     * Indicate if next PlaceEvent should be canceled or not.
+     * Indicate if next PlaceEvent could be canceled or not.
      *
-     * @param _player Info for this player.
      * @return true if flag was previously set to true, false else.
      */
-    public boolean isNextPlaceEventShouldBeCanceled(Player _player)
+    public boolean isNextPlaceEventCouldBeCanceled()
     {
-        return _player != null && m_mapNextPlaceEventBlock.containsKey(_player.getUniqueId());
+        return m_bIsNextPlaceEventCouldBeCanceled;
     }
 
     /**
@@ -144,11 +145,11 @@ public class MaterialConfig
     public boolean manageBlockPlaceEvent(BlockPlaceEvent _event)
     {
         boolean bRet = false;
-        if (m_mapNextPlaceEventBlock.containsKey(_event.getPlayer().getUniqueId()))
+        if (m_bIsNextPlaceEventCouldBeCanceled)
         {
-            if (   m_mapNextPlaceEventBlock.containsKey(_event.getPlayer().getUniqueId())
-                && m_mapNextPlaceEventBlock.get(_event.getPlayer().getUniqueId()).getLocation().equals(_event.getBlock().getLocation())
-               )
+            m_bIsNextPlaceEventCouldBeCanceled = false;
+            // Here, not sure the block is same, often it is not the same ! So just verify plugin is waiting block change at this location
+            if (m_nextPlaceEventBlock != null && m_nextPlaceEventBlock.getLocation().equals(_event.getBlock().getLocation()))
             {
                 bRet = true;
             }

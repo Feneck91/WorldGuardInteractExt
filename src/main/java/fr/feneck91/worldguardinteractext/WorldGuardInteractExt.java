@@ -1,12 +1,7 @@
 package fr.feneck91.worldguardinteractext;
 
-import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.session.Session;
-import com.sk89q.worldguard.session.SessionManager;
-import com.sk89q.worldguard.session.handler.Handler;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -29,17 +24,17 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     /**
      * Unique instance.
      */
-    static private WorldGuardInteractExt s_instance = null;
+    static private WorldGuardInteractExt    s_instance = null;
 
     /**
      * Is verbose log enabled?
      */
-    private boolean         m_bIsVerboseLogEnabled;
+    private boolean                         m_bIsVerboseLogEnabled;
 
     /**
      * Configuration
      */
-    private MaterialConfig  m_materialConfig;
+    private MaterialConfig                  m_materialConfig;
 
     /**
      * Constructor.
@@ -72,16 +67,20 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     }
 
     /**
-     * Indicate if next PlaceEvent should be canceled or not.
+     * Called when plugin is loaded.
      *
-     * @param _player Info for this player.
-     * @return true if flag was previously set to true, false else.
+     * Registering has to be done before WorldGuard is enabled. Thus, it is highly recommended that you
+     * register when your plugin loads. After WorldGuard is enabled, the FlagRegistry is locked and no
+     * new flags can be registered.
      */
-    public boolean isNextPlaceEventShouldBeCanceled(Player _player)
+    @Override
+    public void onLoad()
     {
-        return m_materialConfig.isNextPlaceEventShouldBeCanceled(_player);
+        // My instance
+        s_instance = this;
+        // Register flag
+        WGCustomFlags.registerFlags();
     }
-
     /**
      * Called when plugin is activated.
      * <p>
@@ -90,7 +89,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @Override
     public void onEnable()
     {
-        s_instance = this;
+        WorldGuard.getInstance().getPlatform().getSessionManager().registerHandler(InteractionManagerHandler.FACTORY, null);
         getServer().getPluginManager().registerEvents(this, this);
         if (readConfiguration())
         {
@@ -110,6 +109,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     public void onDisable()
     {
         s_instance = null;
+        WorldGuard.getInstance().getPlatform().getSessionManager().unregisterHandler(InteractionManagerHandler.FACTORY);
         HandlerList.unregisterAll();
         if (IsVerboseLogEnabled())
         {
@@ -300,7 +300,14 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
     public void onPlayerInteractLowest(PlayerInteractEvent _event)
     {
-        m_materialConfig.clearNextPlaceEventInfos(_event.getPlayer());
+        /*
+        RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
+
+        Puis ApplicableRegionSet set = query.getApplicableRegions(BukkitAdapter.adapt(block.getLocation()));
+
+        Ensuite set.testState(Subject, CAMPFIRE_TOGGLE) (où Subject = BukkitAdapter.adapt(player)).
+        */
+        m_materialConfig.clearNextPlaceEventInfos();
         // Only if WorldGuard has canceled the interaction, else do nothing
         Block block = _event.getClickedBlock();
         if (block != null)
@@ -314,29 +321,6 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
                     {
                         getLogger().info("Player interaction canceled - WorldGuard not called!");
                     }
-                }
-            }
-        }
-    }
-
-    /**
-     * When player make event.
-     *
-     * Check if it must be uncanceled.
-     *
-     * @param _event The event
-     */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onPlayerInteractHighest(PlayerInteractEvent _event)
-    {
-        if (_event.useItemInHand() == Event.Result.DENY || _event.useInteractedBlock() == Event.Result.DENY)
-        {
-            if (m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
-            {
-                _event.setCancelled(false); // Do the event
-                if (IsVerboseLogEnabled())
-                {
-                    getLogger().info("Player interaction reactivated");
                 }
             }
         }
