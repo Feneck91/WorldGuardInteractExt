@@ -1,22 +1,12 @@
 package fr.feneck91.worldguardinteractext;
 
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldguard.LocalPlayer;
+import com.sk89q.worldguard.protection.ApplicableRegionSet;
+import com.sk89q.worldguard.protection.flags.StateFlag;
 import com.sk89q.worldguard.session.Session;
 import com.sk89q.worldguard.session.handler.Handler;
-/*
-import org.bukkit.Location;
-
-import org.bukkit.entity.Player;
-import org.bukkit.event.block.BlockPlaceEvent;
-
-
-import com.sk89q.worldguard.protection.ApplicableRegionSet;
-
-import com.sk89q.worldguard.session.Handler;
-import com.sk89q.worldguard.session.Session;
-import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
- */
 
 /**
  * Handler manager.
@@ -53,5 +43,11 @@ public class InteractionManagerHandler extends Handler
     protected InteractionManagerHandler(Session _session)
     {
         super(_session);
+    }
+
+    MaterialConfig m_materialConfig;
+    public void setPendingDecision(MaterialConfig _materialConfig)
+    {
+        m_materialConfig = _materialConfig;
     }
 }

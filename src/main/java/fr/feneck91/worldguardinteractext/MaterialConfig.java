@@ -17,7 +17,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Class used to load and manage configuration.
@@ -76,10 +76,8 @@ public class MaterialConfig
 
     /**
      * Clear flag that indicate next PlaceEvent could be re-activated.
-     *
-     * @param _player Infos for this player.
      */
-    public void clearNextPlaceEventInfos(Player _player)
+    public void clearNextPlaceEventInfos()
     {
         m_bIsNextPlaceEventCouldBeCanceled = false;
     }
@@ -147,9 +145,24 @@ public class MaterialConfig
         boolean bRet = false;
         if (m_bIsNextPlaceEventCouldBeCanceled)
         {
-            m_bIsNextPlaceEventCouldBeCanceled = false;
+            //m_bIsNextPlaceEventCouldBeCanceled = false;
             // Here, not sure the block is same, often it is not the same ! So just verify plugin is waiting block change at this location
             if (m_nextPlaceEventBlock != null && m_nextPlaceEventBlock.getLocation().equals(_event.getBlock().getLocation()))
+            {
+                bRet = true;
+            }
+        }
+
+        return bRet;
+    }
+    public boolean isBlockXXXXXXXXXXXXXXXX(Block _block)
+    {
+        boolean bRet = false;
+        if (m_bIsNextPlaceEventCouldBeCanceled)
+        {
+            //m_bIsNextPlaceEventCouldBeCanceled = false;
+            // Here, not sure the block is same, often it is not the same ! So just verify plugin is waiting block change at this location
+            if (m_nextPlaceEventBlock != null && m_nextPlaceEventBlock.getLocation().equals(_block.getLocation()))
             {
                 bRet = true;
             }
@@ -166,7 +179,7 @@ public class MaterialConfig
      */
     public boolean manageEvent(Event _event)
     {
-        boolean bRet = false;
+        AtomicBoolean bRet = new AtomicBoolean(false);
 
         if (_event instanceof Cancellable eventCancellable)
         {
@@ -206,11 +219,10 @@ public class MaterialConfig
                         {
                             if (materialManager.managePlayerInteraction(_event, block, world, strCurrentPlayerRegionName, (Block _block) ->
                             {   // Re-actiuate the event
-                                m_mapNextPlaceEventBlock.put(player.getUniqueId(), _block);
-                                //eventCancellable.setCancelled(false);
+                                bRet.set(true);
+                                m_nextPlaceEventBlock = _block;
                             }))
                             {   // Ok, done. Should I continue?
-                                bRet = true;
                                 break;
                             }
                         }
@@ -218,7 +230,7 @@ public class MaterialConfig
                 }
             }
         }
-        return bRet;
+        return bRet.get();
     }
 
     /**

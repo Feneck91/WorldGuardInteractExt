@@ -1,6 +1,12 @@
 package fr.feneck91.worldguardinteractext;
 
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.bukkit.event.block.UseBlockEvent;
+import com.sk89q.worldguard.protection.regions.RegionQuery;
+import com.sk89q.worldguard.session.Session;
+import com.sk89q.worldguard.session.SessionManager;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -212,82 +218,104 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
         return bRet;
     }
 
-    /**
-     * When block change, verify it it should be reactivated.
-     *
-     * @param _event The event.
-     */
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onBlockPlaceEventLowest(BlockPlaceEvent _event)
-    {
-        if (m_materialConfig.manageBlockPlaceEvent(_event))
-        {
-            _event.setCancelled(true);
-            if (IsVerboseLogEnabled())
-            {
-                getLogger().info("Block place event canceled - WorldGuard will not called");
-            }
-        }
-    }
+//    /**
+//     * When block change, verify it it should be reactivated.
+//     *
+//     * @param _event The event.
+//     */
+//    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+//    public void onBlockPlaceEventLowest(BlockPlaceEvent _event)
+//    {
+//        if (m_materialConfig.manageBlockPlaceEvent(_event))
+//        {
+//            _event.setCancelled(true);
+//            if (IsVerboseLogEnabled())
+//            {
+//                getLogger().info("Block place event canceled - WorldGuard will not called");
+//            }
+//        }
+//    }
+//
+//    /**
+//     * When block change, verify it it should be reactivated.
+//     *
+//     * @param _event The event.
+//     */
+//    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+//    public void onBlockPlaceEventHighest(BlockPlaceEvent _event)
+//    {
+//        if (m_materialConfig.manageBlockPlaceEvent(_event))
+//        {
+//            m_materialConfig.clearNextPlaceEventInfos(_event.getPlayer());
+//            _event.setCancelled(false);
+//            if (IsVerboseLogEnabled())
+//            {
+//                getLogger().info("Block place event canceled is reactivated!");
+//            }
+//        }
+//    }
+//
+//    /**
+//     * When block is ignite event.
+//     *
+//     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
+//     *
+//     * @param _event The event
+//     */
+//    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+//    public void onBlockIgniteLowest(BlockIgniteEvent _event)
+//    {
+//        if (m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
+//        {
+//            _event.setCancelled(true); // Block  event
+//            if (IsVerboseLogEnabled())
+//            {
+//                getLogger().info("Block ignite interaction canceled - WorldGuard will not called!");
+//            }
+//        }
+//    }
+//
+//    /**
+//     * When block is ignite event.
+//     *
+//     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
+//     *
+//     * @param _event The event
+//     */
+//    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+//    public void onBlockIgnite(BlockIgniteEvent _event)
+//    {
+//        if (_event.isCancelled() && m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
+//        {   // Only if WorldGuard has canceled the interaction, else do nothing
+//            _event.setCancelled(false); // Reactivated event
+//            if (IsVerboseLogEnabled())
+//            {
+//                getLogger().info("Block ignite interaction reactivated!");
+//            }
+//        }
+//    }
 
-    /**
-     * When block change, verify it it should be reactivated.
-     *
-     * @param _event The event.
-     */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onBlockPlaceEventHighest(BlockPlaceEvent _event)
-    {
-        if (m_materialConfig.manageBlockPlaceEvent(_event))
-        {
-            m_materialConfig.clearNextPlaceEventInfos(_event.getPlayer());
-            _event.setCancelled(false);
-            if (IsVerboseLogEnabled())
-            {
-                getLogger().info("Block place event canceled is reactivated!");
-            }
-        }
-    }
+//    @EventHandler
+//    public void onBuildPermission(BuildPermissionEvent event)
+//    {
+//        Block block = BukkitAdapter.adapt(event.getLocation()).getBlock();
+//
+//        if (block.getType() == Material.CAMPFIRE || block.getType() == Material.SOUL_CAMPFIRE) {
+//            LocalPlayer player = event.getPlayer();
+//
+//            ApplicableRegionSet regions = event.getRegions();
+//            if (regions.testState(player, WGCustomFlags.CAMPFIRE_TOGGLE)) {
+//                event.setResult(BuildPermissionEvent.Result.ALLOW);
+//            }
+//        }
+//    }
 
-    /**
-     * When block is ignite event.
-     *
-     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
-     *
-     * @param _event The event
-     */
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onBlockIgniteLowest(BlockIgniteEvent _event)
-    {
-        if (m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
-        {
-            _event.setCancelled(true); // Block  event
-            if (IsVerboseLogEnabled())
-            {
-                getLogger().info("Block ignite interaction canceled - WorldGuard will not called!");
-            }
-        }
-    }
-
-    /**
-     * When block is ignite event.
-     *
-     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
-     *
-     * @param _event The event
-     */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onBlockIgnite(BlockIgniteEvent _event)
-    {
-        if (_event.isCancelled() && m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
-        {   // Only if WorldGuard has canceled the interaction, else do nothing
-            _event.setCancelled(false); // Reactivated event
-            if (IsVerboseLogEnabled())
-            {
-                getLogger().info("Block ignite interaction reactivated!");
-            }
-        }
-    }
+//    @EventHandler(priority = EventPriority.LOW)
+//    public void onUseBlockEvent(UseBlockEvent _event)
+//    {
+//        getLogger().info("onUseBlockEvent: allow!");
+//        _event.setResult(Event.Result.ALLOW);
+//    }
 
     /**
      * When player make event.
@@ -297,32 +325,34 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
      *
      * @param _event The event
      */
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onPlayerInteractLowest(PlayerInteractEvent _event)
-    {
-        /*
-        RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-
-        Puis ApplicableRegionSet set = query.getApplicableRegions(BukkitAdapter.adapt(block.getLocation()));
-
-        Ensuite set.testState(Subject, CAMPFIRE_TOGGLE) (où Subject = BukkitAdapter.adapt(player)).
-        */
-        m_materialConfig.clearNextPlaceEventInfos();
-        // Only if WorldGuard has canceled the interaction, else do nothing
-        Block block = _event.getClickedBlock();
-        if (block != null)
-        {
-            if (_event.getHand() == EquipmentSlot.HAND)
-            {   // Remove 2 call with OFF_HAND
-                if (m_materialConfig.manageEvent(_event))
-                {
-                    _event.setCancelled(true); // Ignore WorldGuard message and rules
-                    if (IsVerboseLogEnabled())
-                    {
-                        getLogger().info("Player interaction canceled - WorldGuard not called!");
-                    }
-                }
-            }
-        }
-    }
+//    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+//    public void onPlayerInteractLowest(PlayerInteractEvent _event)
+//    {
+//        m_materialConfig.clearNextPlaceEventInfos();
+//        // Only if WorldGuard has canceled the interaction, else do nothing
+//        Block block = _event.getClickedBlock();
+//        if (block != null)
+//        {
+//            if (_event.getHand() == EquipmentSlot.HAND)
+//            {   // Remove 2 call with OFF_HAND
+//                if (m_materialConfig.manageEvent(_event))
+//                {
+//                    //Get WG session for the player
+//                    SessionManager sessionManager = WorldGuard.getInstance().getPlatform().getSessionManager();
+//                    Session session = sessionManager.get((LocalPlayer) BukkitAdapter.adapt(_event.getPlayer()));
+//
+//                    // Récupérer ton handler et stocker la décision
+//                    InteractionManagerHandler handler = session.getHandler(InteractionManagerHandler.class);
+//                    if (handler != null)
+//                    {
+//                        handler.setPendingDecision(m_materialConfig);
+//                    }
+//                    if (IsVerboseLogEnabled())
+//                    {
+//                        getLogger().info("Player interaction is validated!");
+//                    }
+//                }
+//            }
+//        }
+//    }
 }

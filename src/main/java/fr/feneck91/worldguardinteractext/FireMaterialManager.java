@@ -217,11 +217,11 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
      * @param _block Block that the user clic.
      * @param _world Current player world.
      * @param _strCurrentPlayerRegionName Current region name where player is located actually.
-     * @param _cancelLambdaAction Lambda that this function MUST call to re-enable event cancelled by WorldGuard. The parameters is Block to uncancel next block placement.
-     * @return true if something is done, false else.
+     * @param _setBlockLambdaAction Lambda that set the block that accept this event (modification).
+     * @return true if something is done, false else. true don't say it's ok
      */
     @Override
-    public boolean managePlayerInteraction(Event _event, Block _block, World _world, String _strCurrentPlayerRegionName, Consumer<Block> _cancelLambdaAction)
+    public boolean managePlayerInteraction(Event _event, Block _block, World _world, String _strCurrentPlayerRegionName, Consumer<Block> _setBlockLambdaAction)
     {
         boolean bRet = false;
 
@@ -288,7 +288,7 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
                     if (infosFire.m_lstExtinguishMaterials.contains(causeMaterial))
                     {
                         bRet = true; // done
-                        _cancelLambdaAction.accept(_block);
+                        _setBlockLambdaAction.accept(_block);
                     }
                 }
                 else
@@ -296,12 +296,10 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
                     if (infosFire.m_lstInflameMaterials.contains(causeMaterial))
                     {
                         bRet = true; // done
-                        _cancelLambdaAction.accept(_block);
+                        _setBlockLambdaAction.accept(_block);
                     }
                 }
             }
-            // Event is tested, not sur we must continue to search even the test failed
-            bRet = true; // done
         }
 
         return bRet;
