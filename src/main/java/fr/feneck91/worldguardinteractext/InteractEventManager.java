@@ -1,0 +1,562 @@
+package fr.feneck91.worldguardinteractext;
+
+import com.sk89q.worldguard.bukkit.event.block.UseBlockEvent;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Player;
+import org.bukkit.event.*;
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Class used to manage all event interaction
+ */
+public class InteractEventManager implements Listener
+{
+    public static class InteractEventsInfos
+    {
+        public static class EventInfos
+        {
+            public enum eCancelType
+            {
+                eCancelTypeIgnore,
+                eCancelTypeCancel,
+                eCancelTypeUncancel,
+                eCancelTypeRecompute,
+            };
+
+            /**
+             * Priority event.
+             */
+            private EventPriority   m_priorityEvent;
+
+            /**
+             * Event cancel type.
+             */
+            private eCancelType     m_cancelType;
+
+            /**
+             * Event class to mangage.
+             */
+            private  Class<?>       m_eventClass;
+
+            /**
+             * Constructor.
+             *
+             * @param _eventClass Event class.
+             * @param _priorityEvent Priority event.
+             * @param _cancelType Event cancel type.
+             */
+            public EventInfos(Class<?> _eventClass, EventPriority _priorityEvent, eCancelType _cancelType)
+            {
+                m_eventClass = _eventClass;
+                m_priorityEvent = _priorityEvent;
+                m_cancelType = _cancelType;
+            }
+
+            /**
+             * Get event priority.
+             *
+             * @return The priority event.
+             */
+            public EventPriority GetEventPriority()
+            {
+                return m_priorityEvent;
+            }
+
+            /**
+             * Get cancel type.
+             *
+             * @return The cancel type.
+             */
+            public eCancelType GetCancelType()
+            {
+                return m_cancelType;
+            }
+
+            /**
+             * Get the event class.
+             *
+             * @return The event class.
+             */
+            public Class<?> GetEventClass()
+            {
+                return m_eventClass;
+            }
+        }
+
+        /**
+         * Player.
+         */
+        private Player                  m_player;
+
+        /**
+         * Block.
+         */
+        private Block                   m_block;
+
+        /**
+         * List of events to cancel / uncancel.
+         */
+        private ArrayList<EventInfos>   m_lstEvents;
+
+        /**
+         * Constuctor.
+         *
+         * @param _player Player.
+         * @param _block Block.
+         */
+        public InteractEventsInfos(Player _player, Block _block)
+        {
+            m_player = _player;
+            m_block = _block;
+            m_lstEvents = new ArrayList<EventInfos>();
+        }
+
+        /**
+         * Assign InteractEventsInfos to this.
+         * <p>
+         *     This is used when eCancelTypeRecompute is reached.
+         * </p>
+         * @param _interactEventsInfos Interaction class.
+         */
+        private void assignToThis(InteractEventsInfos _interactEventsInfos)
+        {
+            m_player = _interactEventsInfos.m_player;
+            m_block = _interactEventsInfos.m_block;
+            m_lstEvents = _interactEventsInfos.m_lstEvents;
+        }
+
+        /**
+         * Add a new event informations.
+         *
+         * @param _eventInfos Event informations.
+         */
+        public void addEventInfos(EventInfos _eventInfos)
+        {
+            m_lstEvents.add(_eventInfos);
+        }
+
+        /**
+         * Manage all events type.
+         *
+         * @param _plugin Plugin.
+         * @param _event Event.
+         * @param _eventPriority Event priority.
+         * @param _player Player.
+         * @param _block Block.
+         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         */
+        private boolean ManageEvent(WorldGuardInteractExt _plugin, Event _event, EventPriority _eventPriority, Player _player, Block _block)
+        {
+            boolean bRet = false;
+
+            if (!m_lstEvents.isEmpty() && _block != null)
+            {
+                if (m_block.getLocation().equals(_block.getLocation()))
+                {
+                    EventInfos eventInfo = m_lstEvents.removeFirst();
+                    if (   eventInfo.GetEventClass() == _event.getClass()
+                        && eventInfo.GetEventPriority() == _eventPriority)
+                    {
+                        switch(eventInfo.GetCancelType())
+                        {
+                            case eCancelTypeIgnore:
+                            {
+                                if (_plugin.isVerboseLogEnabled())
+                                {
+                                    if (_event instanceof Cancellable)
+                                    {
+                                        _plugin.getLogger().info("ManageEvent[Ignore]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " ignored, event is " + (((Cancellable) _event).isCancelled() ? "cancelled" : "not cancelled"));
+                                    }
+                                    else
+                                    {
+                                        _plugin.getLogger().info("ManageEvent[Ignore]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " ignored, event is not cancellable");
+                                    }
+                                }
+                                bRet = true;
+                                break;
+                            }
+                            case eCancelTypeCancel:
+                            {
+                                if (_event instanceof Cancellable)
+                                {
+                                    bRet = true;
+                                    if (!((Cancellable) _event).isCancelled())
+                                    {
+                                        ((Cancellable) _event).setCancelled(true);
+                                        if (_plugin.isVerboseLogEnabled())
+                                        {
+                                            _plugin.getLogger().info("ManageEvent[Cancel]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " set to cancelled");
+                                        }
+                                    }
+                                    else if (_plugin.isVerboseLogEnabled())
+                                    {
+                                        _plugin.getLogger().info("ManageEvent[Cancel]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " already cancelled");
+                                    }
+                                }
+                                else
+                                {
+                                    _plugin.getLogger().severe("ManageEvent[Cancel]: CancelType = " + eventInfo.GetCancelType() + " is not cancellable!");
+                                }
+                                break;
+                            }
+                            case eCancelTypeUncancel:
+                            {
+                                if (_event instanceof Cancellable)
+                                {
+                                    bRet = true;
+                                    if (((Cancellable) _event).isCancelled())
+                                    {
+                                        ((Cancellable) _event).setCancelled(false);
+                                        if (_plugin.isVerboseLogEnabled())
+                                        {
+                                            _plugin.getLogger().info("ManageEvent[Uncancelled]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " set to not cancelled");
+                                        }
+                                    }
+                                    else if (_plugin.isVerboseLogEnabled())
+                                    {
+                                        _plugin.getLogger().info("ManageEvent[Uncancelled]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " already not cancelled");
+                                    }
+                                }
+                                else
+                                {
+                                    _plugin.getLogger().severe("ManageEvent[Uncancelled]: CancelType = " + eventInfo.GetCancelType() + " is not cancellable!");
+                                }
+                                break;
+                            }
+                            case eCancelTypeRecompute:
+                            {
+                                if (!m_lstEvents.isEmpty())
+                                {
+                                    _plugin.getLogger().severe("ManageEvent[Recompute]: CancelType = " + eventInfo.GetCancelType() + " must be the last event into the list!");
+                                }
+                                m_lstEvents.clear();
+                                InteractEventManager.InteractEventsInfos interactEventsInfos = _plugin.getMaterialConfig().managePlayerInteraction(_event);
+                                if (interactEventsInfos != null)
+                                {
+                                    if (_plugin.isVerboseLogEnabled())
+                                    {
+                                        _plugin.getLogger().info("ManageEvent[Recompute]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " recomputed");
+                                    }
+                                    assignToThis(interactEventsInfos);
+                                    bRet = ManageEvent(_plugin, _event, _eventPriority, _player, _block);
+                                }
+                                else if (_plugin.isVerboseLogEnabled())
+                                {
+                                    _plugin.getLogger().info("ManageEvent[Recompute]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " recomputed but is null");
+                                }
+                                break;
+                            }
+                            default:
+                            {
+                                _plugin.getLogger().severe("ManageEvent : CancelType = " + eventInfo.GetCancelType() + " is unknown!");
+                                break;
+                            }
+                        }
+                        if (bRet)
+                        {   // If m_lstEvents is empty : return false,  it's done!
+                            bRet = !m_lstEvents.isEmpty();
+                        }
+                    }
+                    else if (_plugin.isVerboseLogEnabled())
+                    {
+                        _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " is not the sme as awaitted event (" + eventInfo.GetEventClass().getSimpleName() + " / " + eventInfo.GetEventPriority() + "), surveillance of actions is stopped!");
+                    }
+                }
+                else  if (_plugin.isVerboseLogEnabled())
+                {
+                    _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " block location are not sames, surveillance of actions is stopped!");
+                }
+            }
+            else if (_plugin.isVerboseLogEnabled())
+            {
+                if (m_lstEvents.isEmpty())
+                {
+                    _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " event list is empty, surveillance of actions is stopped!");
+                }
+                else if (_block != null)
+                {
+                    _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " target block is null, surveillance of actions is stopped!");
+                }
+            }
+
+            return bRet;
+        }
+
+        /**
+         * Manage player interaction event.
+         *
+         * @param _plugin Plugin.
+         * @param _event Event.
+         * @param _eventPriority Event priority.
+         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         */
+        public boolean ManageEvent(WorldGuardInteractExt _plugin, PlayerInteractEvent _event, EventPriority _eventPriority)
+        {
+            return ManageEvent(_plugin, _event, _eventPriority, _event.getPlayer(), _event.getClickedBlock());
+        }
+
+        /**
+         * Manage player block place event.
+         *
+         * @param _plugin Plugin.
+         * @param _event Event.
+         * @param _eventPriority Event priority.
+         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         */
+        public boolean ManageEvent(WorldGuardInteractExt _plugin, BlockPlaceEvent _event, EventPriority _eventPriority)
+        {
+            return ManageEvent(_plugin, _event, _eventPriority, _event.getPlayer(), _event.getBlock());
+        }
+
+        /**
+         * Manage player block place event.
+         *
+         * @param _plugin Plugin.
+         * @param _event Event.
+         * @param _eventPriority Event priority.
+         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         */
+        public boolean ManageEvent(WorldGuardInteractExt _plugin, BlockIgniteEvent _event, EventPriority _eventPriority)
+        {
+            return ManageEvent(_plugin, _event, _eventPriority, _event.getPlayer(), _event.getBlock());
+        }
+    }
+
+    /**
+     * Instance of plugin.
+     */
+    private final WorldGuardInteractExt             m_plugin;
+
+    /**
+     * Material configuration.
+     *
+     * Loaded by the plugin.
+     */
+    private MaterialConfig                          m_materialConfig;
+
+    /**
+     * Next PlaceEvent block.
+     *
+     * Used to quickly check if PlaceEvent will use this block, to reactivate the cancel event.
+     * Key is the player UUID.
+     */
+    private final Map<UUID, InteractEventsInfos>    m_mapNextPlaceEventBlock;
+
+    /**
+     * Constructor.
+     *
+     * @param _plugin Plugin, used to access logger ot other things.
+     * @param _materialConfig Material configuration.
+     */
+    public InteractEventManager(WorldGuardInteractExt _plugin, MaterialConfig _materialConfig)
+    {
+        // Plugin
+        m_plugin = _plugin;
+        // Initialize event manager
+        m_mapNextPlaceEventBlock = new HashMap<UUID, InteractEventsInfos>();
+        setMaterialConfig(_materialConfig);
+    }
+
+    /**
+     * Get the plugin.
+     *
+     * @return The plugin instance.
+     */
+    public WorldGuardInteractExt getPlugin()
+    {
+        return m_plugin;
+    }
+
+    /**
+     * Called when plugin is activated.
+     * <p>
+     * Used to register events.
+     */
+    public void onEnable()
+    {
+        getPlugin().getServer().getPluginManager().registerEvents(this, getPlugin());
+    }
+
+    /**
+     * Called when plugin is disabled.
+     * <p>
+     * Used to unregister events.
+     */
+    public void onDisable()
+    {
+        HandlerList.unregisterAll();
+    }
+
+    /**
+     * Clear all events infos for this player.
+     *
+     * @param _player Infos for this player.
+     */
+    public void clearInteractEventsInfos(Player _player)
+    {
+        if (_player != null)
+        {
+            m_mapNextPlaceEventBlock.remove(_player.getUniqueId());
+        }
+    }
+
+    /**
+     * Set the material configuration.
+     *
+     * @param _materialConfig Material configuration.
+     */
+    public void setMaterialConfig(MaterialConfig _materialConfig)
+    {
+        m_materialConfig = _materialConfig;
+    }
+
+    //=====================================================================================================//
+    //                                                                                                     //
+    //                                          Events                                                     //
+    //                                                                                                     //
+    //=====================================================================================================//
+    /**
+     * When player make event.
+     *
+     * Check if it must be uncanceled. It is the only code place where all check is done to know if the user will
+     * do something that the plugin is able to manage or not.
+     *
+     * @param _event The event
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onPlayerInteractLowest(PlayerInteractEvent _event)
+    {
+        if (_event != null)
+        {
+            clearInteractEventsInfos(_event.getPlayer());
+            // Only if WorldGuard has canceled the interaction, else do nothing
+            Block block = _event.getClickedBlock();
+            if (block != null)
+            {
+                if (_event.getHand() == EquipmentSlot.HAND)
+                {   // Remove 2 call with OFF_HAND
+                    InteractEventManager.InteractEventsInfos interactEventInfos = m_materialConfig.managePlayerInteraction(_event);
+                    if (interactEventInfos != null)
+                    {
+                        m_mapNextPlaceEventBlock.put(_event.getPlayer().getUniqueId(), interactEventInfos);
+                        if (!interactEventInfos.ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+                        {
+                            m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * When player make event.
+     *
+     * Check if it must be uncanceled. It is the only code place where all check is done to know if the user will
+     * do something that the plugin is able to manage or not.
+     *
+     * @param _event The event
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onPlayerInteractHighest(PlayerInteractEvent _event)
+    {
+        UUID uuidPlayer = _event.getPlayer().getUniqueId();
+        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        {
+            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+            {
+                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+            }
+        }
+    }
+
+    /**
+     * When block is ignite event.
+     *
+     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
+     *
+     * @param _event The event
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockIgniteLowest(BlockIgniteEvent _event)
+    {
+        if (_event.getPlayer() != null)
+        {
+            UUID uuidPlayer = _event.getPlayer().getUniqueId();
+            if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+            {
+                if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+                {
+                    m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                }
+            }
+        }
+    }
+
+    /**
+     * When block is ignite event.
+     *
+     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
+     *
+     * @param _event The event
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockIgniteHighest(BlockIgniteEvent _event)
+    {
+        if (_event.getPlayer() != null)
+        {
+            UUID uuidPlayer = _event.getPlayer().getUniqueId();
+            if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+            {
+                if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+                {
+                    m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                }
+            }
+        }
+    }
+
+    /**
+     * When block change, verify if it should be reactivated.
+     *
+     * @param _event The event.
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockPlaceEventLowest(BlockPlaceEvent _event)
+    {
+        UUID uuidPlayer = _event.getPlayer().getUniqueId();
+        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        {
+            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+            {
+                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+            }
+        }
+    }
+
+    /**
+     * When block change, verify if it should be reactivated.
+     *
+     * @param _event The event.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockPlaceEventHighest(BlockPlaceEvent _event)
+    {
+        UUID uuidPlayer = _event.getPlayer().getUniqueId();
+        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        {
+            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+            {
+                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+            }
+        }
+    }
+}

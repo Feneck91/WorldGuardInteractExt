@@ -70,7 +70,7 @@ public abstract class AMaterialManager  implements IMaterialManager
             {
                 if (_lambdaIsValid.apply(itemMaterial))
                 {
-                    if (getPlugin().IsVerboseLogEnabled() && _lambdaInfoAdd != null)
+                    if (getPlugin().isVerboseLogEnabled() && _lambdaInfoAdd != null)
                     {
                         _lambdaInfoAdd.accept(itemMaterial);
                     }
@@ -93,7 +93,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                         {
                             if (_lambdaIsValid.apply(itemMaterial))
                             {
-                                if (getPlugin().IsVerboseLogEnabled())
+                                if (getPlugin().isVerboseLogEnabled())
                                 {
                                     _lambdaInfoAdd.accept(itemMaterial);
                                 }
@@ -109,7 +109,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                 }
                 else if (_lambdaIsValid.apply(itemMaterialFound))
                 {
-                    if (getPlugin().IsVerboseLogEnabled())
+                    if (getPlugin().isVerboseLogEnabled())
                     {
                         _lambdaInfoAdd.accept(itemMaterialFound);
                     }
@@ -151,7 +151,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                 }
                 else
                 {   // Add it
-                    if (getPlugin().IsVerboseLogEnabled())
+                    if (getPlugin().isVerboseLogEnabled())
                     {
                         _lambdaInfoAdd.accept(strRegionNameItem);
                     }
@@ -171,7 +171,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                     }
                     else
                     {   // Add it
-                        if (getPlugin().IsVerboseLogEnabled())
+                        if (getPlugin().isVerboseLogEnabled())
                         {
                             _lambdaInfoAdd.accept(strRegionName);
                         }
@@ -192,7 +192,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                             }
                             else
                             {   // Add it
-                                if (getPlugin().IsVerboseLogEnabled())
+                                if (getPlugin().isVerboseLogEnabled())
                                 {
                                     _lambdaInfoAdd.accept(strRegionNameItem);
                                 }

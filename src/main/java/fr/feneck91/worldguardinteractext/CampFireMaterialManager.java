@@ -1,42 +1,32 @@
 package fr.feneck91.worldguardinteractext;
 
-import org.bukkit.GameMode;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Lightable;
 import org.bukkit.entity.*;
-import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.Damageable;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.checkerframework.checker.regex.qual.Regex;
-import org.w3c.dom.DOMStringList;
 
 import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.regex.Pattern;
 
 /**
  * Class that implements MaterialManager for fire materials.
  */
-public class FireMaterialManager extends AMaterialManager implements IMaterialManager
+public class CampFireMaterialManager extends AMaterialManager implements IMaterialManager
 {
     /**
      * Material type that this class manage.
      */
-    public static final String MATERIAL_TYPE = "__FIRE__";
+    public static final String MATERIAL_TYPE = "__CAMPFIRE__";
 
     /**
-     * Class that manage all informations about fire.
+     * Class that manage all informations about campfire.
      */
-    private static class InformationsFireMaterial
+    private static class InformationsCampFireMaterial
     {
         /**
          * List of region allowed
@@ -62,17 +52,17 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
     /**
      * List of map informations.
      */
-    private Map<String, InformationsFireMaterial> m_mapInformationsFireMaterial;
+    private Map<String, InformationsCampFireMaterial> m_mapInformationsCampFireMaterial;
 
     /**
      * Constructor.
      *
      * @param _plugin Plugin, used to access logger ot other things.
      */
-    public FireMaterialManager(WorldGuardInteractExt _plugin)
+    public CampFireMaterialManager(WorldGuardInteractExt _plugin)
     {
         super(_plugin);
-        m_mapInformationsFireMaterial = new HashMap<String, InformationsFireMaterial>();
+        m_mapInformationsCampFireMaterial = new HashMap<String, InformationsCampFireMaterial>();
     }
 
     /**
@@ -159,7 +149,7 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
         }
         else
         {   // All is OK, add it
-            InformationsFireMaterial infos = new InformationsFireMaterial();
+            InformationsCampFireMaterial infos = new InformationsCampFireMaterial();
             infos.m_lstMaterials           = new HashSet<>(listMaterial);
             infos.m_lstInflameMaterials    = new HashSet<>(listInflame);
             infos.m_lstExtinguishMaterials = new HashSet<>(listExtinguish);
@@ -170,13 +160,13 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
                 for (Material material : listMaterial)
                 {
                     String strKey = strRegionName + "_._" + material.name();
-                    if (m_mapInformationsFireMaterial.containsKey(strKey))
+                    if (m_mapInformationsCampFireMaterial.containsKey(strKey))
                     {
                         getPlugin().getLogger().severe("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
                         bRet = false;
                         break;
                     }
-                    m_mapInformationsFireMaterial.put(strKey, infos);
+                    m_mapInformationsCampFireMaterial.put(strKey, infos);
                 }
                 if (!bRet)
                 {
@@ -217,18 +207,18 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
      * @param _block Block that the user clic.
      * @param _world Current player world.
      * @param _strCurrentPlayerRegionName Current region name where player is located actually.
-     * @param _cancelLambdaAction Lambda that this function MUST call to re-enable event cancelled by WorldGuard. The parameters is Block to uncancel next block placement.
-     * @return true if something is done, false else.
+     * @return InteractEventsInfos if something is done, null else.
      */
     @Override
-    public boolean managePlayerInteraction(Event _event, Block _block, World _world, String _strCurrentPlayerRegionName, Consumer<Block> _cancelLambdaAction)
+    public InteractEventManager.InteractEventsInfos managePlayerInteraction(Event _event, Block _block, World _world, String _strCurrentPlayerRegionName)
     {
-        boolean bRet = false;
+        InteractEventManager.InteractEventsInfos interactEventsInfos = null;
+        Player player = null;
 
         String key = _world.getName() + "." + _strCurrentPlayerRegionName + "_._" + _block.getBlockData().getMaterial().name();
-        if (m_mapInformationsFireMaterial.containsKey(key))
+        if (m_mapInformationsCampFireMaterial.containsKey(key))
         {
-            InformationsFireMaterial infosFire = m_mapInformationsFireMaterial.get(key);
+            InformationsCampFireMaterial infosFire = m_mapInformationsCampFireMaterial.get(key);
             // Here, we are sure, _block.getType() is Flammable
             if (_block.getBlockData() instanceof Lightable lightableBlockData)
             {
@@ -239,12 +229,14 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
                     causeMaterial = playerInteractEvent.getItem() == null
                         ? Material.AIR
                         : playerInteractEvent.getItem().getType();
+                    player = playerInteractEvent.getPlayer();
                 }
                 else if (_event instanceof BlockIgniteEvent blockIgniteEvent)
                 {
-                    if (blockIgniteEvent.getPlayer() != null)
+                    player = blockIgniteEvent.getPlayer();
+                    if (player != null)
                     {   // If the fire ignit with player
-                        causeMaterial = blockIgniteEvent.getPlayer().getInventory().getItemInMainHand().getType();
+                        causeMaterial = player.getInventory().getItemInMainHand().getType();
                     }
                     else if (blockIgniteEvent.getIgnitingEntity() != null)
                     {   // If the fire ignit with entity (like mob, arrow, etc)
@@ -287,23 +279,42 @@ public class FireMaterialManager extends AMaterialManager implements IMaterialMa
                 {   // 🔥 Stop fire with hand or shovel or other (in m_lstExtinguishMaterials)
                     if (infosFire.m_lstExtinguishMaterials.contains(causeMaterial))
                     {
-                        bRet = true; // done
-                        _cancelLambdaAction.accept(_block);
+                        interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel));
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel));
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel));
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel));
                     }
                 }
                 else
                 {   // 🔥 Start fire with fire charge or flint and steel or other
                     if (infosFire.m_lstInflameMaterials.contains(causeMaterial))
                     {
-                        bRet = true; // done
-                        _cancelLambdaAction.accept(_block);
+                        interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
+
+                        if (_event instanceof BlockIgniteEvent)
+                        {   // Compute for BlockIgniteEvent
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel));
+                        }
+                        else
+                        {   // Waiting BlockIgniteEvent to recompute
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeRecompute));
+                        }
                     }
                 }
             }
-            // Event is tested, not sur we must continue to search even the test failed
-            bRet = true; // done
+            // Event is tested, the test failed
+            if (interactEventsInfos == null)
+            {
+                interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
+            }
         }
 
-        return bRet;
+        return interactEventsInfos;
     }
 }

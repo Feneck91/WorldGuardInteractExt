@@ -1,31 +1,18 @@
 package fr.feneck91.worldguardinteractext;
 
-import com.sk89q.worldguard.WorldGuard;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.Player;
-import org.bukkit.event.*;
-import org.bukkit.event.block.BlockIgniteEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.block.Block;
 
 /**
  * Base class to manage plugin.
  *
  * Allow to catch event and check if some block interaction forbidden by WorldGuard can be allowed or not by this plugin.
  */
-public class WorldGuardInteractExt extends JavaPlugin implements Listener
+public class WorldGuardInteractExt extends JavaPlugin
 {
-    /**
-     * Unique instance.
-     */
-    static private WorldGuardInteractExt    s_instance = null;
-
     /**
      * Is verbose log enabled?
      */
@@ -37,6 +24,11 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     private MaterialConfig                  m_materialConfig;
 
     /**
+     * Manage events
+     */
+    private final InteractEventManager      m_interactionManager;
+
+    /**
      * Constructor.
      */
     public WorldGuardInteractExt()
@@ -44,16 +36,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
         m_bIsVerboseLogEnabled = false;
         // Default config with nothing into it
         m_materialConfig = new MaterialConfig(this);
-    }
-
-    /**
-     * Get the instance.
-     *
-     * @return The unique instance of this plugin.
-     */
-    public static WorldGuardInteractExt getInstance()
-    {
-        return s_instance;
+        m_interactionManager = new InteractEventManager(this, m_materialConfig);
     }
 
     /**
@@ -61,11 +44,19 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
      *
      * @return true if enables, false else.
      */
-    public boolean IsVerboseLogEnabled()
+    public boolean isVerboseLogEnabled()
     {
         return m_bIsVerboseLogEnabled;
     }
 
+    /**
+     * Get the material coonfig instance.
+     * @return The instance of MaterialConfig.
+     */
+    public MaterialConfig getMaterialConfig()
+    {
+        return m_materialConfig;
+    }
     /**
      * Called when plugin is loaded.
      *
@@ -76,28 +67,6 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     @Override
     public void onLoad()
     {
-        // My instance
-        s_instance = this;
-        // Register flag
-        WGCustomFlags.registerFlags();
-    }
-    /**
-     * Called when plugin is activated.
-     * <p>
-     * Used to read the current configuration.
-     */
-    @Override
-    public void onEnable()
-    {
-        WorldGuard.getInstance().getPlatform().getSessionManager().registerHandler(InteractionManagerHandler.FACTORY, null);
-        getServer().getPluginManager().registerEvents(this, this);
-        if (readConfiguration())
-        {
-            if (IsVerboseLogEnabled())
-            {
-                getLogger().info("WorldGuardInteractExt activated!");
-            }
-        }
     }
 
     /**
@@ -106,14 +75,30 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
      * Used to read the current configuration.
      */
     @Override
+    public void onEnable()
+    {
+        if (readConfiguration())
+        {
+            if (isVerboseLogEnabled())
+            {
+                getLogger().info("WorldGuardInteractExt activated!");
+            }
+        }
+        m_interactionManager.onEnable();
+    }
+
+    /**
+     * Called when plugin is disabled.
+     * <p>
+     * Used to read the current configuration.
+     */
+    @Override
     public void onDisable()
     {
-        s_instance = null;
-        WorldGuard.getInstance().getPlatform().getSessionManager().unregisterHandler(InteractionManagerHandler.FACTORY);
-        HandlerList.unregisterAll();
-        if (IsVerboseLogEnabled())
+        m_interactionManager.onDisable();
+        if (isVerboseLogEnabled())
         {
-            getLogger().info("WorldGuardInteractExt deactivated!");
+            getLogger().info("WorldGuardInteractExt disabled!");
         }
     }
 
@@ -136,7 +121,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
             FileConfiguration config = getConfig();
             // Reading config
             m_bIsVerboseLogEnabled = config.getBoolean("enable_verbose_logs");
-            if (IsVerboseLogEnabled())
+            if (isVerboseLogEnabled())
             {
                 getLogger().info("Reading configuration");
             }
@@ -144,6 +129,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
             if (materialConfig.RaadConfig(config))
             {
                 m_materialConfig = materialConfig;
+                m_interactionManager.setMaterialConfig(m_materialConfig);
                 bRet = true;
             }
         }
@@ -157,7 +143,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
     }
 
     /**
-     * Used when user run a commanbd.
+     * Used when user run a command.
      *
      * @param _sender Sender.
      * @param _command Command.
@@ -178,7 +164,7 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
             }
             else if (_args.length != 1)
             {
-                _sender.sendMessage(ChatColor.RED + "One an only one argument is needed for this command!");
+                _sender.sendMessage(ChatColor.RED + "One and only one argument is needed for this command!");
             }
             else
             {
@@ -210,119 +196,5 @@ public class WorldGuardInteractExt extends JavaPlugin implements Listener
             }
         }
         return bRet;
-    }
-
-    /**
-     * When block change, verify it it should be reactivated.
-     *
-     * @param _event The event.
-     */
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onBlockPlaceEventLowest(BlockPlaceEvent _event)
-    {
-        if (m_materialConfig.manageBlockPlaceEvent(_event))
-        {
-            _event.setCancelled(true);
-            if (IsVerboseLogEnabled())
-            {
-                getLogger().info("Block place event canceled - WorldGuard will not called");
-            }
-        }
-    }
-
-    /**
-     * When block change, verify it it should be reactivated.
-     *
-     * @param _event The event.
-     */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onBlockPlaceEventHighest(BlockPlaceEvent _event)
-    {
-        if (m_materialConfig.manageBlockPlaceEvent(_event))
-        {
-            m_materialConfig.clearNextPlaceEventInfos(_event.getPlayer());
-            _event.setCancelled(false);
-            if (IsVerboseLogEnabled())
-            {
-                getLogger().info("Block place event canceled is reactivated!");
-            }
-        }
-    }
-
-    /**
-     * When block is ignite event.
-     *
-     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
-     *
-     * @param _event The event
-     */
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onBlockIgniteLowest(BlockIgniteEvent _event)
-    {
-        if (m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
-        {
-            _event.setCancelled(true); // Block  event
-            if (IsVerboseLogEnabled())
-            {
-                getLogger().info("Block ignite interaction canceled - WorldGuard will not called!");
-            }
-        }
-    }
-
-    /**
-     * When block is ignite event.
-     *
-     * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
-     *
-     * @param _event The event
-     */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onBlockIgnite(BlockIgniteEvent _event)
-    {
-        if (_event.isCancelled() && m_materialConfig.isNextPlaceEventShouldBeCanceled(_event.getPlayer()))
-        {   // Only if WorldGuard has canceled the interaction, else do nothing
-            _event.setCancelled(false); // Reactivated event
-            if (IsVerboseLogEnabled())
-            {
-                getLogger().info("Block ignite interaction reactivated!");
-            }
-        }
-    }
-
-    /**
-     * When player make event.
-     *
-     * Check if it must be uncanceled.
-     *
-     *
-     * @param _event The event
-     */
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onPlayerInteractLowest(PlayerInteractEvent _event)
-    {
-        /*
-        RegionQuery query = WorldGuard.getInstance().getPlatform().getRegionContainer().createQuery();
-
-        Puis ApplicableRegionSet set = query.getApplicableRegions(BukkitAdapter.adapt(block.getLocation()));
-
-        Ensuite set.testState(Subject, CAMPFIRE_TOGGLE) (où Subject = BukkitAdapter.adapt(player)).
-        */
-        m_materialConfig.clearNextPlaceEventInfos();
-        // Only if WorldGuard has canceled the interaction, else do nothing
-        Block block = _event.getClickedBlock();
-        if (block != null)
-        {
-            if (_event.getHand() == EquipmentSlot.HAND)
-            {   // Remove 2 call with OFF_HAND
-                if (m_materialConfig.manageEvent(_event))
-                {
-                    _event.setCancelled(true); // Ignore WorldGuard message and rules
-                    if (IsVerboseLogEnabled())
-                    {
-                        getLogger().info("Player interaction canceled - WorldGuard not called!");
-                    }
-                }
-            }
-        }
     }
 }

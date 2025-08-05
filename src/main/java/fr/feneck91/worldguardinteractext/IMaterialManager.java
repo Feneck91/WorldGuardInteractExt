@@ -52,8 +52,7 @@ interface IMaterialManager
      * @param _block Block that the user clic.
      * @param _world Current player world.
      * @param _strCurrentPlayerRegionName Current region name where player is located actually.
-     * @param _cancelLambdaAction Lambda that this function MUST call to re-enable event cancelled by WorldGuard. The parameters is Block to uncancel next block placement.
-     * @return true if something is done, false else.
+     * @return InteractEventsInfos if something is done, null else.
      */
-    boolean managePlayerInteraction(Event _event, Block _block, World _world, String _strCurrentPlayerRegionName, Consumer<Block> _cancelLambdaAction);
+    InteractEventManager.InteractEventsInfos managePlayerInteraction(Event _event, Block _block, World _world, String _strCurrentPlayerRegionName);
 }

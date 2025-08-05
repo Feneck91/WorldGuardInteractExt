@@ -37,18 +37,6 @@ public class MaterialConfig
     private HashMap<String, IMaterialManager> m_mapMaterialManagers;
 
     /**
-     * Is next place event could  be canceled?
-     */
-    private boolean m_bIsNextPlaceEventCouldBeCanceled;
-
-    /**
-     * Next PlaceEvent block.
-     *
-     * Used to quickly check if PlaceEvent will use this block, to reactivate the cancel event.
-     */
-    private Block m_nextPlaceEventBlock;
-
-    /**
      * Constructor.
      *
      * @param _plugin Plugin, used to access logger ot other things.
@@ -56,12 +44,9 @@ public class MaterialConfig
     public MaterialConfig(WorldGuardInteractExt _plugin)
     {
         m_plugin = _plugin;
-        m_bIsNextPlaceEventCouldBeCanceled = false;
-        m_nextPlaceEventBlock = null;
-
         // Initialize all available materials
         m_mapMaterialManagers = new HashMap<String, IMaterialManager>();
-        m_mapMaterialManagers.put(FireMaterialManager.MATERIAL_TYPE, new FireMaterialManager(_plugin));
+        m_mapMaterialManagers.put(CampFireMaterialManager.MATERIAL_TYPE, new CampFireMaterialManager(_plugin));
     }
 
     /**
@@ -72,26 +57,6 @@ public class MaterialConfig
     public WorldGuardInteractExt getPlugin()
     {
         return m_plugin;
-    }
-
-    /**
-     * Clear flag that indicate next PlaceEvent could be re-activated.
-     *
-     * @param _player Infos for this player.
-     */
-    public void clearNextPlaceEventInfos(Player _player)
-    {
-        m_bIsNextPlaceEventCouldBeCanceled = false;
-    }
-
-    /**
-     * Indicate if next PlaceEvent could be canceled or not.
-     *
-     * @return true if flag was previously set to true, false else.
-     */
-    public boolean isNextPlaceEventCouldBeCanceled()
-    {
-        return m_bIsNextPlaceEventCouldBeCanceled;
     }
 
     /**
@@ -110,7 +75,7 @@ public class MaterialConfig
 
             if (m_mapMaterialManagers.containsKey(strMaterialType))
             {
-                if (m_plugin.IsVerboseLogEnabled())
+                if (m_plugin.isVerboseLogEnabled())
                 {
                     m_plugin.getLogger().info("Reading material = " + strMaterialType);
                 }
@@ -131,42 +96,42 @@ public class MaterialConfig
         return bRet;
     }
 
-    /**
-     * Manage PlaceBlock event.
-     *
-     * When managePlayerInteraction function detect that a canceled action was done by WorldGuard, it re-activate
-     * the event and record block material and location.
-     * Then, just after the PlayerInteractEvent, if BlockPlaceEvent is called by Minecraft framework with these
-     * informations, this plugin must re-activate event too (example, put fire on camp fire will modify block too).
-     *
-     * @param _event Player event. event.getClickedBlock() is not null else we don't go there.
-     * @return true if the event is re-activated.
-     */
-    public boolean manageBlockPlaceEvent(BlockPlaceEvent _event)
-    {
-        boolean bRet = false;
-        if (m_bIsNextPlaceEventCouldBeCanceled)
-        {
-            m_bIsNextPlaceEventCouldBeCanceled = false;
-            // Here, not sure the block is same, often it is not the same ! So just verify plugin is waiting block change at this location
-            if (m_nextPlaceEventBlock != null && m_nextPlaceEventBlock.getLocation().equals(_event.getBlock().getLocation()))
-            {
-                bRet = true;
-            }
-        }
-
-        return bRet;
-    }
+//    /**
+//     * Manage PlaceBlock event.
+//     *
+//     * When managePlayerInteraction function detect that a canceled action was done by WorldGuard, it re-activate
+//     * the event and record block material and location.
+//     * Then, just after the PlayerInteractEvent, if BlockPlaceEvent is called by Minecraft framework with these
+//     * informations, this plugin must re-activate event too (example, put fire on camp fire will modify block too).
+//     *
+//     * @param _event Player event. event.getClickedBlock() is not null else we don't go there.
+//     * @return true if the event is re-activated.
+//     */
+//    public boolean manageBlockPlaceEvent(BlockPlaceEvent _event)
+//    {
+//        boolean bRet = false;
+//        if (m_bIsNextPlaceEventCouldBeCanceled)
+//        {
+//            m_bIsNextPlaceEventCouldBeCanceled = false;
+//            // Here, not sure the block is same, often it is not the same ! So just verify plugin is waiting block change at this location
+//            if (m_nextPlaceEventBlock != null && m_nextPlaceEventBlock.getLocation().equals(_event.getBlock().getLocation()))
+//            {
+//                bRet = true;
+//            }
+//        }
+//
+//        return bRet;
+//    }
 
     /**
      * Manage user interaction.
      *
      * @param _event Generic event.
-     * @return true if one manage interaction, false else.
+     * @return Informations about how to manage this interaction, null to ignore all.
      */
-    public boolean manageEvent(Event _event)
+    public InteractEventManager.InteractEventsInfos managePlayerInteraction(Event _event)
     {
-        boolean bRet = false;
+        InteractEventManager.InteractEventsInfos interactEventInfos = null;
 
         if (_event instanceof Cancellable eventCancellable)
         {
@@ -204,13 +169,9 @@ public class MaterialConfig
                     {
                         for (IMaterialManager materialManager : m_mapMaterialManagers.values())
                         {
-                            if (materialManager.managePlayerInteraction(_event, block, world, strCurrentPlayerRegionName, (Block _block) ->
-                            {   // Re-actiuate the event
-                                m_mapNextPlaceEventBlock.put(player.getUniqueId(), _block);
-                                //eventCancellable.setCancelled(false);
-                            }))
-                            {   // Ok, done. Should I continue?
-                                bRet = true;
+                            interactEventInfos = materialManager.managePlayerInteraction(_event, block, world, strCurrentPlayerRegionName);
+                            if (interactEventInfos != null)
+                            {
                                 break;
                             }
                         }
@@ -218,13 +179,13 @@ public class MaterialConfig
                 }
             }
         }
-        return bRet;
+        return interactEventInfos;
     }
 
     /**
      * Display informations about material.
      *
-     * @param _strMaterialType Type, like __FIRE__, __FIELD__, etc.
+     * @param _strMaterialType Type, like __CAMPFIRE__, __FIELD__, etc.
      */
     public void displayMaterials(String _strMaterialType)
     {

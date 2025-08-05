@@ -11,7 +11,7 @@
 #
 # AIR is used when user has no item into his hand
 # If action is not possible by Minecraft, even you put material, it will not work!
-# For __FIRE__, if you put AIR into extinguish, you will not able to extinguish fire with hand without any tools.
+# Example, for __CAMPFIRE__, if you put AIR into extinguish, you will not able to extinguish fire with hand without any tools.
 
 # Will display log while block interaction, make more easy to debug and configure
 # By default verbose log is false
@@ -19,7 +19,7 @@ enable_verbose_logs: true
 items:
   [
     {
-      type: "__FIRE__",
+      type: "__CAMPFIRE__",
       # name : should be Flammable / Burnable
       names: ["CAMPFIRE", "SOUL_CAMPFIRE"],
       # Region : you MUST add world name before region name to make it work
