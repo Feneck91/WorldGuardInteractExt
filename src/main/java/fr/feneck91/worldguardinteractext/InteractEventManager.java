@@ -1,12 +1,11 @@
 package fr.feneck91.worldguardinteractext;
-
-import com.sk89q.worldguard.bukkit.event.block.UseBlockEvent;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 
 import java.util.ArrayList;
@@ -423,6 +422,18 @@ public class InteractEventManager implements Listener
     //                                          Events                                                     //
     //                                                                                                     //
     //=====================================================================================================//
+
+    /**
+     * Clear all events interaction infos for the player that leave the game.
+     *
+     * @param _event Event.
+     */
+    @EventHandler
+    public void onPlayerLeave(PlayerQuitEvent _event)
+    {
+        clearInteractEventsInfos(_event.getPlayer());
+    }
+
     /**
      * When player make event.
      *

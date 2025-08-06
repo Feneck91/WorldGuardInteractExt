@@ -14,7 +14,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import java.util.*;
 
 /**
- * Class that implements MaterialManager for fire materials.
+ * Class that implements MaterialManager for campfire materials.
  */
 public class CampFireMaterialManager extends AMaterialManager implements IMaterialManager
 {
@@ -77,7 +77,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
     }
 
     /**
-     * Ask ig this material is valid for this type.
+     * Ask if this material is valid for this type.
      *
      * @param _material Material to test.
      * @return true if this material is valid, false else.

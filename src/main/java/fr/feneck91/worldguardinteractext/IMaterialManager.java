@@ -4,11 +4,8 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.event.Event;
-import org.bukkit.event.player.PlayerInteractEvent;
 
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  *  Interface used to read config display materials or manage action for material familly.

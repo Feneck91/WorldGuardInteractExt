@@ -2,7 +2,6 @@ package fr.feneck91.worldguardinteractext;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.protection.ApplicableRegionSet;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
@@ -14,10 +13,9 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
- * Base class for all MaterialManagers.
+ * Base class for all MaterialManagers class.
  */
 public abstract class AMaterialManager  implements IMaterialManager
 {
@@ -236,5 +234,5 @@ public abstract class AMaterialManager  implements IMaterialManager
         }
 
         return mapRegions;
-   }
+    }
 }
