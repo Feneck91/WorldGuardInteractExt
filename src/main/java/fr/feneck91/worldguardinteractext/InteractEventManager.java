@@ -622,6 +622,11 @@ public class InteractEventManager implements Listener
         }
     }
 
+    /**
+     * When a bucket is emptying, verify if it should be reactivated.
+     *
+     * @param _event The event.
+     */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
     public void onPlayerBucketEmptyEventLowest(PlayerBucketEmptyEvent _event)
     {
@@ -635,6 +640,11 @@ public class InteractEventManager implements Listener
         }
     }
 
+    /**
+     * When a bucket is emptying, verify if it should be reactivated.
+     *
+     * @param _event The event.
+     */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onPlayerBucketEmptyEventHighest(PlayerBucketEmptyEvent _event)
     {
@@ -647,54 +657,4 @@ public class InteractEventManager implements Listener
             }
         }
     }
-
-    /* Future uses
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onPlayerBucketFillEventLowest(PlayerBucketFillEvent _event)
-    {
-        getPlugin().getLogger().info("PlayerBucketFillEvent _event LOWEST");
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onPlayerBucketFillEventHighest(PlayerBucketFillEvent _event)
-    {
-        getPlugin().getLogger().info("PlayerBucketFillEvent _event HIGHEST");
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onBlockBreakEventLowest(BlockBreakEvent _event)
-    {
-        getPlugin().getLogger().info("BlockBreakEvent _event LOWEST");
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onBlockBreakEventHighest(BlockBreakEvent _event)
-    {
-        getPlugin().getLogger().info("BlockBreakEvent _event HIGHEST");
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onBlockDamageEventLowest(BlockDamageEvent _event)
-    {
-        getPlugin().getLogger().info("BlockDamageEvent _event LOWEST");
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onBlockDamageEventHighest(BlockDamageEvent _event)
-    {
-        getPlugin().getLogger().info("BlockDamageEvent _event HIGHEST");
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onBlockGrowEventLowest(BlockDamageEvent _event)
-    {
-        getPlugin().getLogger().info("BlockGrowEvent _event LOWEST");
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onBlockGrowEventHighest(BlockDamageEvent _event)
-    {
-        getPlugin().getLogger().info("BlockGrowEvent _event HIGHEST");
-    }
-    */
 }
