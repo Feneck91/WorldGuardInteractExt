@@ -27,10 +27,10 @@ items:
       # regions: ["myworld.region_1", "myworld.region_2"],
       regions: [], # All regions
       inflame: ["FLINT_AND_STEEL", "FIRE_CHARGE"],
-      # Here, use a regex to specify showel you want (here all SHOWEL) or specify only some tools.
+      # Here, use a regex to specify shovel you want (here all SHOVEL) or specify only some tools.
       # You can use AIR to be able to extinguish firecamp with hand (not possible in Minecraft)
       # You can use WATER_BUCKET: in this case when a firecamp is extinguish with WATER_BUCKET, it's work and
-      # the water is removed just after (in normal way, the water is keep and goes everywhere).
+      # the water is removed just after (in normal way, the water is keep and spread everywhere).
       extinguish: [".+_SHOVEL"],
     }
   ]
