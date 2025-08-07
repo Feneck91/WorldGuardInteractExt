@@ -2,16 +2,20 @@ package fr.feneck91.worldguardinteractext;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
-import org.bukkit.event.block.BlockIgniteEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageEvent;
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * Class used to manage all event interaction
@@ -33,17 +37,22 @@ public class InteractEventManager implements Listener
             /**
              * Priority event.
              */
-            private EventPriority   m_priorityEvent;
+            private final EventPriority     m_priorityEvent;
 
             /**
              * Event cancel type.
              */
-            private eCancelType     m_cancelType;
+            private final eCancelType       m_cancelType;
 
             /**
-             * Event class to mangage.
+             * Event class to manage.
              */
-            private  Class<?>       m_eventClass;
+            private final Class<?>          m_eventClass;
+
+            /**
+             * Lambda to call if event is managed, could be null.
+             */
+            private final Consumer<Event>   m_lambdaAction;
 
             /**
              * Constructor.
@@ -51,12 +60,14 @@ public class InteractEventManager implements Listener
              * @param _eventClass Event class.
              * @param _priorityEvent Priority event.
              * @param _cancelType Event cancel type.
+             * @param _lambdaAction Lambda to call if event is managed, could be null.
              */
-            public EventInfos(Class<?> _eventClass, EventPriority _priorityEvent, eCancelType _cancelType)
+            public EventInfos(Class<?> _eventClass, EventPriority _priorityEvent, eCancelType _cancelType, Consumer<Event> _lambdaAction)
             {
                 m_eventClass = _eventClass;
                 m_priorityEvent = _priorityEvent;
                 m_cancelType = _cancelType;
+                m_lambdaAction = _lambdaAction;
             }
 
             /**
@@ -87,6 +98,19 @@ public class InteractEventManager implements Listener
             public Class<?> GetEventClass()
             {
                 return m_eventClass;
+            }
+
+            /**
+             * Call event action if nt null.
+             *
+             * @param _event Event informations.
+             */
+            public void callLambda(Event _event)
+            {
+                if (m_lambdaAction != null)
+                {
+                    m_lambdaAction.accept(_event);
+                }
             }
         }
 
@@ -260,7 +284,10 @@ public class InteractEventManager implements Listener
                             }
                         }
                         if (bRet)
-                        {   // If m_lstEvents is empty : return false,  it's done!
+                        {
+                            // Call lambda if set
+                            eventInfo.callLambda(_event);
+                            // If m_lstEvents is empty : return false,  it's done!
                             bRet = !m_lstEvents.isEmpty();
                         }
                     }
@@ -316,7 +343,7 @@ public class InteractEventManager implements Listener
         }
 
         /**
-         * Manage player block place event.
+         * Manage block ignit event.
          *
          * @param _plugin Plugin.
          * @param _event Event.
@@ -324,6 +351,19 @@ public class InteractEventManager implements Listener
          * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
          */
         public boolean ManageEvent(WorldGuardInteractExt _plugin, BlockIgniteEvent _event, EventPriority _eventPriority)
+        {
+            return ManageEvent(_plugin, _event, _eventPriority, _event.getPlayer(), _event.getBlock());
+        }
+
+        /**
+         * Manage bucket emptying event.
+         *
+         * @param _plugin Plugin.
+         * @param _event Event.
+         * @param _eventPriority Event priority.
+         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         */
+        public boolean ManageEvent(WorldGuardInteractExt _plugin, PlayerBucketEmptyEvent _event, EventPriority _eventPriority)
         {
             return ManageEvent(_plugin, _event, _eventPriority, _event.getPlayer(), _event.getBlock());
         }
@@ -376,7 +416,7 @@ public class InteractEventManager implements Listener
 
     /**
      * Called when plugin is activated.
-     * <p>
+     * <p/>
      * Used to register events.
      */
     public void onEnable()
@@ -386,7 +426,7 @@ public class InteractEventManager implements Listener
 
     /**
      * Called when plugin is disabled.
-     * <p>
+     * <p/>
      * Used to unregister events.
      */
     public void onDisable()
@@ -398,13 +438,16 @@ public class InteractEventManager implements Listener
      * Clear all events infos for this player.
      *
      * @param _player Infos for this player.
+     * @return true if a pending interaction was deleted!
      */
-    public void clearInteractEventsInfos(Player _player)
+    public boolean clearInteractEventsInfos(Player _player)
     {
+        boolean bRet = false;
         if (_player != null)
         {
-            m_mapNextPlaceEventBlock.remove(_player.getUniqueId());
+            bRet = m_mapNextPlaceEventBlock.remove(_player.getUniqueId()) != null;
         }
+        return bRet;
     }
 
     /**
@@ -431,7 +474,15 @@ public class InteractEventManager implements Listener
     @EventHandler
     public void onPlayerLeave(PlayerQuitEvent _event)
     {
-        clearInteractEventsInfos(_event.getPlayer());
+        if (getPlugin().isVerboseLogEnabled())
+        {
+            getPlugin().getLogger().info("Player " + _event.getPlayer().getName() + " has left the game");
+        }
+        if (   clearInteractEventsInfos(_event.getPlayer())
+            && getPlugin().isVerboseLogEnabled())
+        {
+            getPlugin().getLogger().info("Pending interaction for player " + _event.getPlayer().getName() + " has been cleared");
+        }
     }
 
     /**
@@ -570,4 +621,80 @@ public class InteractEventManager implements Listener
             }
         }
     }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onPlayerBucketEmptyEventLowest(PlayerBucketEmptyEvent _event)
+    {
+        UUID uuidPlayer = _event.getPlayer().getUniqueId();
+        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        {
+            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+            {
+                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onPlayerBucketEmptyEventHighest(PlayerBucketEmptyEvent _event)
+    {
+        UUID uuidPlayer = _event.getPlayer().getUniqueId();
+        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        {
+            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+            {
+                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+            }
+        }
+    }
+
+    /* Future uses
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onPlayerBucketFillEventLowest(PlayerBucketFillEvent _event)
+    {
+        getPlugin().getLogger().info("PlayerBucketFillEvent _event LOWEST");
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onPlayerBucketFillEventHighest(PlayerBucketFillEvent _event)
+    {
+        getPlugin().getLogger().info("PlayerBucketFillEvent _event HIGHEST");
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockBreakEventLowest(BlockBreakEvent _event)
+    {
+        getPlugin().getLogger().info("BlockBreakEvent _event LOWEST");
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockBreakEventHighest(BlockBreakEvent _event)
+    {
+        getPlugin().getLogger().info("BlockBreakEvent _event HIGHEST");
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockDamageEventLowest(BlockDamageEvent _event)
+    {
+        getPlugin().getLogger().info("BlockDamageEvent _event LOWEST");
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockDamageEventHighest(BlockDamageEvent _event)
+    {
+        getPlugin().getLogger().info("BlockDamageEvent _event HIGHEST");
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockGrowEventLowest(BlockDamageEvent _event)
+    {
+        getPlugin().getLogger().info("BlockGrowEvent _event LOWEST");
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockGrowEventHighest(BlockDamageEvent _event)
+    {
+        getPlugin().getLogger().info("BlockGrowEvent _event HIGHEST");
+    }
+    */
 }

@@ -10,23 +10,27 @@
 # REMEMBER TO KEEP PERIODICAL BACKUPS.
 #
 # AIR is used when user has no item into his hand
-# If action is not possible by Minecraft, even you put material, it will not work!
-# Example, for __CAMPFIRE__, if you put AIR into extinguish, you will not able to extinguish fire with hand without any tools.
+# If action is not possible by Minecraft, even you put material, it should be not work (if not specially coded)!
 
 # Will display log while block interaction, make more easy to debug and configure
 # By default verbose log is false
-enable_verbose_logs: true
+enable_verbose_logs: false
 items:
   [
     {
+      # Specify type of extended interection: here it is campfire
       type: "__CAMPFIRE__",
-      # name : should be Flammable / Burnable
+      # name : must be only CAMPFIRE or SOUL_CAMPFIRE or both
       names: ["CAMPFIRE", "SOUL_CAMPFIRE"],
       # Region : you MUST add world name before region name to make it work
       # Put  [] to accept all regions
       # regions: ["myworld.region_1", "myworld.region_2"],
       regions: [], # All regions
       inflame: ["FLINT_AND_STEEL", "FIRE_CHARGE"],
+      # Here, use a regex to specify showel you want (here all SHOWEL) or specify only some tools.
+      # You can use AIR to be able to extinguish firecamp with hand (not possible in Minecraft)
+      # You can use WATER_BUCKET: in this case when a firecamp is extinguish with WATER_BUCKET, it's work and
+      # the water is removed just after (in normal way, the water is keep and goes everywhere).
       extinguish: [".+_SHOVEL"],
     }
   ]

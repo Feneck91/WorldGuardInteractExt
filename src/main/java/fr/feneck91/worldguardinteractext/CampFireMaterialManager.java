@@ -1,5 +1,6 @@
 package fr.feneck91.worldguardinteractext;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -9,6 +10,7 @@ import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 import java.util.*;
@@ -85,7 +87,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
     @Override
     public boolean isMaterialValidForType(Material _material)
     {
-        return _material != null && (_material.isFlammable() || _material.isBurnable());
+        return _material != null && (_material.equals(Material.CAMPFIRE) || _material.equals(Material.SOUL_CAMPFIRE));
     }
 
     /**
@@ -276,14 +278,56 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     }
                 }
                 if (lightableBlockData.isLit())
-                {   // 🔥 Stop fire with hand or shovel or other (in m_lstExtinguishMaterials)
+                {   // 🔥 Stop fire with shovel or other (in m_lstExtinguishMaterials)
                     if (infosFire.m_lstExtinguishMaterials.contains(causeMaterial))
                     {
                         interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
-                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel));
-                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel));
-                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel));
-                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel));
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                        // For bucket
+                        if (causeMaterial != null && causeMaterial.name().endsWith("BUCKET"))
+                        {
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
+                                causeMaterial.equals(Material.WATER_BUCKET)
+                                    ? (event) ->
+                                        {
+                                            if (event instanceof PlayerBucketEmptyEvent playerBucketEmptyEvent)
+                                            {   // Let action to do (the fire will be extinguish automatically), then
+                                                // remove water 1 tick after
+                                                Bukkit.getScheduler().runTaskLater(getPlugin(), () ->
+                                                {
+                                                    lightableBlockData.setLit(false);
+                                                    _block.setBlockData(lightableBlockData);
+                                                    if (getPlugin().isVerboseLogEnabled())
+                                                    {
+                                                        getPlugin().getLogger().info("Remove water after extinguish fire camp with water bucket");
+                                                    }
+                                                }, 1L); // 1 tick later: water is placed, we can remove it
+                                            }
+                                        }
+                                    : null));
+                        }
+                        else
+                        {
+                            if (causeMaterial != null && causeMaterial.equals(Material.AIR))
+                            {   // Trying to stop fire with hand only : no BlockPlaceEvent and lambda for PlayerInteractEvent HIGHEST
+                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
+                                    (event) ->
+                                    {   // Replace by not burn item
+                                        lightableBlockData.setLit(false);
+                                        _block.setBlockData(lightableBlockData);
+                                        // And play sound
+                                        _block.getWorld().playSound(_block.getLocation(), "block.fire.extinguish", 1.0f, 1.0f);
+                                    }));
+                            }
+                            else
+                            {   // Normal way
+                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                            }
+                        }
                     }
                 }
                 else
@@ -294,16 +338,16 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
 
                         if (_event instanceof BlockIgniteEvent)
                         {   // Compute for BlockIgniteEvent
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel));
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel));
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel));
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
                         }
                         else
                         {   // Waiting BlockIgniteEvent to recompute
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore));
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore));
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeRecompute));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore, null));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore, null));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeRecompute, null));
                         }
                     }
                 }

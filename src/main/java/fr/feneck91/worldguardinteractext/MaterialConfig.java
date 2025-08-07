@@ -16,7 +16,6 @@ import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Class used to load and manage configuration.
@@ -94,33 +93,6 @@ public class MaterialConfig
 
         return bRet;
     }
-
-//    /**
-//     * Manage PlaceBlock event.
-//     *
-//     * When managePlayerInteraction function detect that a canceled action was done by WorldGuard, it re-activate
-//     * the event and record block material and location.
-//     * Then, just after the PlayerInteractEvent, if BlockPlaceEvent is called by Minecraft framework with these
-//     * informations, this plugin must re-activate event too (example, put fire on camp fire will modify block too).
-//     *
-//     * @param _event Player event. event.getClickedBlock() is not null else we don't go there.
-//     * @return true if the event is re-activated.
-//     */
-//    public boolean manageBlockPlaceEvent(BlockPlaceEvent _event)
-//    {
-//        boolean bRet = false;
-//        if (m_bIsNextPlaceEventCouldBeCanceled)
-//        {
-//            m_bIsNextPlaceEventCouldBeCanceled = false;
-//            // Here, not sure the block is same, often it is not the same ! So just verify plugin is waiting block change at this location
-//            if (m_nextPlaceEventBlock != null && m_nextPlaceEventBlock.getLocation().equals(_event.getBlock().getLocation()))
-//            {
-//                bRet = true;
-//            }
-//        }
-//
-//        return bRet;
-//    }
 
     /**
      * Manage user interaction.
