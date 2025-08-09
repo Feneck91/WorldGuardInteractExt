@@ -14,6 +14,7 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerTakeLecternBookEvent;
 
 import java.util.*;
 
@@ -45,6 +46,7 @@ public class MaterialConfig
         // Initialize all available materials
         m_mapMaterialManagers = new HashMap<String, IMaterialManager>();
         m_mapMaterialManagers.put(CampFireMaterialManager.MATERIAL_TYPE, new CampFireMaterialManager(_plugin));
+        m_mapMaterialManagers.put(LecternMaterialManager.MATERIAL_TYPE, new LecternMaterialManager(_plugin));
     }
 
     /**
@@ -107,7 +109,7 @@ public class MaterialConfig
         if (_event instanceof Cancellable eventCancellable)
         {
             RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-            Player player;
+            Player player = null;
             Block block = null;
 
             if (_event instanceof PlayerInteractEvent playerInteractEvent)
@@ -120,10 +122,12 @@ public class MaterialConfig
                 player = blockIgniteEvent.getPlayer();
                 block = blockIgniteEvent.getBlock();
             }
-            else
+            else if (_event instanceof PlayerTakeLecternBookEvent playerTakeLecternBookEvent)
             {
-                player = null;
+                player = playerTakeLecternBookEvent.getPlayer();
+                block = playerTakeLecternBookEvent.getLectern().getBlock();
             }
+
             if (player != null)
             {
                 World world = player.getWorld();
