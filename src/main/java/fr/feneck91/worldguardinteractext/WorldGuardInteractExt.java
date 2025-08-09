@@ -57,12 +57,13 @@ public class WorldGuardInteractExt extends JavaPlugin
     {
         return m_materialConfig;
     }
+
     /**
      * Called when plugin is loaded.
-     *
+     * <p>
      * Registering has to be done before WorldGuard is enabled. Thus, it is highly recommended that you
      * register when your plugin loads. After WorldGuard is enabled, the FlagRegistry is locked and no
-     * new flags can be registered.
+     * new flags can be registered.</p>
      */
     @Override
     public void onLoad()
@@ -72,12 +73,12 @@ public class WorldGuardInteractExt extends JavaPlugin
     /**
      * Called when plugin is activated.
      * <p>
-     * Used to read the current configuration.
+     * Used to read the current configuration.</p>
      */
     @Override
     public void onEnable()
     {
-        if (readConfiguration())
+        if (readConfiguration(false))
         {
             if (isVerboseLogEnabled())
             {
@@ -90,7 +91,7 @@ public class WorldGuardInteractExt extends JavaPlugin
     /**
      * Called when plugin is disabled.
      * <p>
-     * Used to read the current configuration.
+     * Used to read the current configuration.</p>
      */
     @Override
     public void onDisable()
@@ -105,9 +106,10 @@ public class WorldGuardInteractExt extends JavaPlugin
     /**
      * Read the plugin configuration.
      *
+     * @param _bReloadConfig true to force reload config, false else.
      * @return true if configuration is OK.
      */
-    private boolean readConfiguration()
+    private boolean readConfiguration(boolean _bReloadConfig)
     {
         boolean bRet = false;
 
@@ -116,6 +118,10 @@ public class WorldGuardInteractExt extends JavaPlugin
         // have deleted this file to get new one.
         saveDefaultConfig();
 
+        if (_bReloadConfig)
+        {
+            reloadConfig();
+        }
         try
         {
             FileConfiguration config = getConfig();
@@ -184,7 +190,7 @@ public class WorldGuardInteractExt extends JavaPlugin
             else
             {
                 // Reload configuration here
-                if (readConfiguration())
+                if (readConfiguration(true))
                 {
                     _sender.sendMessage(ChatColor.GREEN + "WorldGuardInteractExt configuration reloaded successfully.");
                     bRet = true;
