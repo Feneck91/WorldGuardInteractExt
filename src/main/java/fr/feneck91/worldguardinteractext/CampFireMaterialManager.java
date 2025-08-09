@@ -31,7 +31,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
     private static class InformationsCampFireMaterial
     {
         /**
-         * List of region allowed
+         * List of allowed regions.
          */
         public Set<String> m_lstRegions;
 
@@ -68,7 +68,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
     }
 
     /**
-     * Get Material type like __FIRE__, __FIELD__, etc.
+     * Get Material type like __CAMPFIRE__, __FIELD__, etc.
      *
      * @return tye material type.
      */
@@ -91,7 +91,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
     }
 
     /**
-     * Read a piece of configuration about fire.
+     * Read a piece of configuration about camp fire.
      *
      * @param _mapItems Maps items Config to read.
      * @return true if _mapItems is read without error, false else.
@@ -113,7 +113,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
         if (listMaterial.isEmpty())
         {
             getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found no item!");
-            // bRet = false; No, not a critical error, just ignore __FIRE__ configuration
+            // bRet = false; No, not a critical error, just ignore __CAMPFIRE__ configuration
         }
         else
         {   // Read inflame
@@ -139,7 +139,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
         if (listInflame.isEmpty() && listExtinguish.isEmpty())
         {   // Should have at least one of both
             getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no material found for at least one of both inflame / extinguish, ignored!");
-            // bRet = false; No, not a critical error, just ignore __FIRE__ configuration
+            // bRet = false; No, not a critical error, just ignore __CAMPFIRE__ configuration
         }
         lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
                                  (String strRegionName) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
