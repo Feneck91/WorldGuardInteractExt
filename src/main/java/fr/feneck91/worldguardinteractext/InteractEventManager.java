@@ -4,8 +4,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.*;
@@ -185,116 +183,7 @@ public class InteractEventManager implements Listener
                 if (m_block.getLocation().equals(_block.getLocation()))
                 {
                     EventInfos eventInfo = m_lstEvents.removeFirst();
-                    if (   eventInfo.GetEventClass() == _event.getClass()
-                        && eventInfo.GetEventPriority() == _eventPriority)
-                    {
-                        switch(eventInfo.GetCancelType())
-                        {
-                            case eCancelTypeIgnore:
-                            {
-                                if (_plugin.isVerboseLogEnabled())
-                                {
-                                    if (_event instanceof Cancellable)
-                                    {
-                                        _plugin.getLogger().info("ManageEvent[Ignore]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " ignored, event is " + (((Cancellable) _event).isCancelled() ? "cancelled" : "not cancelled"));
-                                    }
-                                    else
-                                    {
-                                        _plugin.getLogger().info("ManageEvent[Ignore]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " ignored, event is not cancellable");
-                                    }
-                                }
-                                bRet = true;
-                                break;
-                            }
-                            case eCancelTypeCancel:
-                            {
-                                if (_event instanceof Cancellable)
-                                {
-                                    bRet = true;
-                                    if (!((Cancellable) _event).isCancelled())
-                                    {
-                                        ((Cancellable) _event).setCancelled(true);
-                                        if (_plugin.isVerboseLogEnabled())
-                                        {
-                                            _plugin.getLogger().info("ManageEvent[Cancel]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " set to cancelled");
-                                        }
-                                    }
-                                    else if (_plugin.isVerboseLogEnabled())
-                                    {
-                                        _plugin.getLogger().info("ManageEvent[Cancel]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " already cancelled");
-                                    }
-                                }
-                                else
-                                {
-                                    _plugin.getLogger().severe("ManageEvent[Cancel]: CancelType = " + eventInfo.GetCancelType() + " is not cancellable!");
-                                }
-                                break;
-                            }
-                            case eCancelTypeUncancel:
-                            {
-                                if (_event instanceof Cancellable)
-                                {
-                                    bRet = true;
-                                    if (((Cancellable) _event).isCancelled())
-                                    {
-                                        ((Cancellable) _event).setCancelled(false);
-                                        if (_plugin.isVerboseLogEnabled())
-                                        {
-                                            _plugin.getLogger().info("ManageEvent[Uncancelled]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " set to not cancelled");
-                                        }
-                                    }
-                                    else if (_plugin.isVerboseLogEnabled())
-                                    {
-                                        _plugin.getLogger().info("ManageEvent[Uncancelled]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " already not cancelled");
-                                    }
-                                }
-                                else
-                                {
-                                    _plugin.getLogger().severe("ManageEvent[Uncancelled]: CancelType = " + eventInfo.GetCancelType() + " is not cancellable!");
-                                }
-                                break;
-                            }
-                            case eCancelTypeRecompute:
-                            {
-                                if (!m_lstEvents.isEmpty())
-                                {
-                                    _plugin.getLogger().severe("ManageEvent[Recompute]: CancelType = " + eventInfo.GetCancelType() + " must be the last event into the list!");
-                                }
-                                m_lstEvents.clear();
-                                InteractEventManager.InteractEventsInfos interactEventsInfos = _plugin.getMaterialConfig().managePlayerInteraction(_event);
-                                if (interactEventsInfos != null)
-                                {
-                                    if (_plugin.isVerboseLogEnabled())
-                                    {
-                                        _plugin.getLogger().info("ManageEvent[Recompute]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " recomputed");
-                                    }
-                                    assignToThis(interactEventsInfos);
-                                    bRet = ManageEvent(_plugin, _event, _eventPriority, _player, _block);
-                                }
-                                else if (_plugin.isVerboseLogEnabled())
-                                {
-                                    _plugin.getLogger().info("ManageEvent[Recompute]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " recomputed but is null");
-                                }
-                                break;
-                            }
-                            default:
-                            {
-                                _plugin.getLogger().severe("ManageEvent : CancelType = " + eventInfo.GetCancelType() + " is unknown!");
-                                break;
-                            }
-                        }
-                        if (bRet)
-                        {
-                            // Call lambda if set
-                            eventInfo.callLambda(_event);
-                            // If m_lstEvents is empty : return false,  it's done!
-                            bRet = !m_lstEvents.isEmpty();
-                        }
-                    }
-                    else if (_plugin.isVerboseLogEnabled())
-                    {
-                        _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " is not the sme as awaitted event (" + eventInfo.GetEventClass().getSimpleName() + " / " + eventInfo.GetEventPriority() + "), surveillance of actions is stopped!");
-                    }
+                    bRet = ManageEventInfos(_plugin, _event, _eventPriority, _player, _block, eventInfo);
                 }
                 else  if (_plugin.isVerboseLogEnabled())
                 {
@@ -311,6 +200,139 @@ public class InteractEventManager implements Listener
                 {
                     _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " target block is null, surveillance of actions is stopped!");
                 }
+            }
+
+            return bRet;
+        }
+
+        /**
+         * Manage one EventInfos.
+         *
+         * @param _plugin Plugin.
+         * @param _event Event.
+         * @param _eventPriority Event priority.
+         * @param _player Player.
+         * @param _block Block.
+         * @param eventInfo Event infos.
+         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         */
+        private boolean ManageEventInfos(WorldGuardInteractExt _plugin, Event _event, EventPriority _eventPriority, Player _player, Block _block, EventInfos eventInfo)
+        {
+            boolean bRet = false;
+
+            if (   eventInfo.GetEventClass() == _event.getClass()
+                && eventInfo.GetEventPriority() == _eventPriority)
+            {
+                switch(eventInfo.GetCancelType())
+                {
+                    case eCancelTypeIgnore:
+                    {
+                        if (_plugin.isVerboseLogEnabled())
+                        {
+                            if (_event instanceof Cancellable)
+                            {
+                                _plugin.getLogger().info("ManageEvent[Ignore]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " ignored, event is " + (((Cancellable) _event).isCancelled() ? "cancelled" : "not cancelled"));
+                            }
+                            else
+                            {
+                                _plugin.getLogger().info("ManageEvent[Ignore]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " ignored, event is not cancellable");
+                            }
+                        }
+                        bRet = true;
+                        break;
+                    }
+                    case eCancelTypeCancel:
+                    {
+                        if (_event instanceof Cancellable)
+                        {
+                            bRet = true;
+                            if (!((Cancellable) _event).isCancelled())
+                            {
+                                ((Cancellable) _event).setCancelled(true);
+                                if (_plugin.isVerboseLogEnabled())
+                                {
+                                    _plugin.getLogger().info("ManageEvent[Cancel]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " set to cancelled");
+                                }
+                            }
+                            else if (_plugin.isVerboseLogEnabled())
+                            {
+                                _plugin.getLogger().info("ManageEvent[Cancel]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " already cancelled");
+                            }
+                        }
+                        else
+                        {
+                            _plugin.getLogger().severe("ManageEvent[Cancel]: CancelType = " + eventInfo.GetCancelType() + " is not cancellable!");
+                        }
+                        break;
+                    }
+                    case eCancelTypeUncancel:
+                    {
+                        if (_event instanceof Cancellable)
+                        {
+                            bRet = true;
+                            if (((Cancellable) _event).isCancelled())
+                            {
+                                ((Cancellable) _event).setCancelled(false);
+                                if (_plugin.isVerboseLogEnabled())
+                                {
+                                    _plugin.getLogger().info("ManageEvent[Uncancelled]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " set to not cancelled");
+                                }
+                            }
+                            else if (_plugin.isVerboseLogEnabled())
+                            {
+                                _plugin.getLogger().info("ManageEvent[Uncancelled]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " already not cancelled");
+                            }
+                        }
+                        else
+                        {
+                            _plugin.getLogger().severe("ManageEvent[Uncancelled]: CancelType = " + eventInfo.GetCancelType() + " is not cancellable!");
+                        }
+                        break;
+                    }
+                    case eCancelTypeRecompute:
+                    {
+                        if (!m_lstEvents.isEmpty())
+                        {
+                            _plugin.getLogger().severe("ManageEvent[Recompute]: CancelType = " + eventInfo.GetCancelType() + " must be the last event into the list!");
+                        }
+                        m_lstEvents.clear();
+                        InteractEventManager.InteractEventsInfos interactEventsInfos = _plugin.getMaterialConfig().managePlayerInteraction(_event);
+                        if (interactEventsInfos != null)
+                        {
+                            if (_plugin.isVerboseLogEnabled())
+                            {
+                                _plugin.getLogger().info("ManageEvent[Recompute]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " recomputed");
+                            }
+                            assignToThis(interactEventsInfos);
+                            bRet = ManageEvent(_plugin, _event, _eventPriority, _player, _block);
+                        }
+                        else if (_plugin.isVerboseLogEnabled())
+                        {
+                            _plugin.getLogger().info("ManageEvent[Recompute]: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " recomputed but is null");
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        _plugin.getLogger().severe("ManageEvent : CancelType = " + eventInfo.GetCancelType() + " is unknown!");
+                        break;
+                    }
+                }
+                if (bRet)
+                {
+                    // Call lambda if set
+                    eventInfo.callLambda(_event);
+                    // If m_lstEvents is empty : return false,  it's done!
+                    if (m_lstEvents.isEmpty())
+                    {
+                        bRet = false;
+                        _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " event list is empty, surveillance of actions is done!");
+                    }
+                }
+            }
+            else if (_plugin.isVerboseLogEnabled())
+            {
+                _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " is not the sme as awaited event (" + eventInfo.GetEventClass().getSimpleName() + " / " + eventInfo.GetEventPriority() + "), surveillance of actions is stopped!");
             }
 
             return bRet;
@@ -366,6 +388,25 @@ public class InteractEventManager implements Listener
         public boolean ManageEvent(WorldGuardInteractExt _plugin, PlayerBucketEmptyEvent _event, EventPriority _eventPriority)
         {
             return ManageEvent(_plugin, _event, _eventPriority, _event.getPlayer(), _event.getBlock());
+        }
+
+        /**
+         * Manage bucket emptying event.
+         *
+         * @param _plugin Plugin.
+         * @param _event Event.
+         * @param _eventPriority Event priority.
+         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         */
+        public boolean ManageEvent(WorldGuardInteractExt _plugin, PlayerTakeLecternBookEvent _event, EventPriority _eventPriority)
+        {
+            boolean bRet = false;
+            if (m_lstEvents.size() == 1)
+            {
+                EventInfos eventInfo = m_lstEvents.removeFirst();
+                return ManageEventInfos(_plugin, _event, _eventPriority, _event.getPlayer(), null, eventInfo);
+            }
+            return bRet;
         }
     }
 
@@ -654,6 +695,24 @@ public class InteractEventManager implements Listener
             if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
             {
                 m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onPlayerTakeLecternBookEventLowest(PlayerTakeLecternBookEvent _event)
+    {
+        if (_event != null)
+        {
+            clearInteractEventsInfos(_event.getPlayer());
+            InteractEventManager.InteractEventsInfos interactEventInfos = m_materialConfig.managePlayerInteraction(_event);
+            if (interactEventInfos != null)
+            {
+                m_mapNextPlaceEventBlock.put(_event.getPlayer().getUniqueId(), interactEventInfos);
+                if (!interactEventInfos.ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+                {
+                    m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                }
             }
         }
     }
