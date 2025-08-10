@@ -1,16 +1,16 @@
-#
 # WorldGuardInteractExt configuration file
 #
 # WARNING: This file is based on WorldGuard region configuration.
 #          A single mistyped character can corrupt the file.
 #          If WorldGuardInteractExt is unable to parse the file, your configuration
 #          will fail to load and the contents of this file will ignored.
-#          Please use a YAML validator such as http://yaml-online-parser.appspot.com (for smaller files).
+#          Please use a YAML validator such as http://yaml-online-parser.appspot.com
 #
 # REMEMBER TO KEEP PERIODICAL BACKUPS.
 #
 # AIR is used when user has no item into his hand
-# If action is not possible by Minecraft, even you put material, it should be not work (if not specially coded)!
+# If action is not possible by Minecraft, even you put material, it should be
+# not work (if not specially coded)!
 
 # Will display log while block interaction, make easier to debug and configure
 # By default verbose log is false

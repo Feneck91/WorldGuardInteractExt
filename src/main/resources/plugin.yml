@@ -1,23 +1,30 @@
 name: WorldGuardInteractExt
-version: 1.0
+version: 2.0
 main: fr.feneck91.worldguardinteractext.WorldGuardInteractExt
 api-version: 1.20
 depend: [WorldGuard]
 commands:
-  wgiextreload:
+  wgi:
+    description: Main commands for WorldGuardInteractExt plugin
+    usage: /wgi <reload|materials>
+    permission: wgiext.command
+    permission-message: You do not have permission to use this command.
+    aliases: [ wgiext ]
+
+permissions:
+  wgiext.command:
+    description: Use the plugin commands
+    default: op
+    children:
+      wgiext.command.reload: true
+      wgiext.command.materials: true
+
+  wgiext.command.reload:
     description: Reload the configuration file.
     permission-message: You do not have permission to use this command.
-    usage: "Usage: /wgiextreload"
-    permission: wgiext.reload
-  wgiextmaterials:
-    description: Display all materials for __CAMPFIRE__.
-    permission-message: You do not have permission to use this command.
-    usage: "Usage: /wgiextmaterials <material type>"
-    permission: wgiext.wgiextmaterials
-permissions:
-  wgiext.reload:
-    description: Allow to reload the plugin configuration.
     default: op
-  wgiext.materials:
-    description: Allow to display material available for plugin type.
+
+  wgiext.command.materials:
+    description: Display all materials for __CAMPFIRE__, __LECTERN__.
+    permission-message: You do not have permission to use this command.
     default: op
