@@ -78,7 +78,8 @@ items:
       # See colors codes: https://minecraft.wiki/w/Formatting_codes
       remove_forbidden_message: "&eYou cannot remove this book!"
     }
-  ]```
+  ]
+  ```
 
 # Versions history:
   - 1.0 : 2025/08/08
