@@ -14,6 +14,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * Class that implements MaterialManager for lectern materials.
@@ -99,7 +100,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
      * Read a piece of configuration about lectern.
      *
      * @param _mapItems Maps items Config to read.
-     * @return true if _mapItems is read without error, false else.
+     * @return true if _mapItems is read without fatal error (but could be ignored), false else.
      */
     @Override
     public boolean readConfig(Map<String, Object> _mapItems)
@@ -110,11 +111,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
         List<MaterialInformation> lstRemoveMaterials = new ArrayList<MaterialInformation>();
         Set<String> lstRegions;
 
-        listMaterial = findMaterials((ArrayList<String>) _mapItems.get("names"),
-            this::isMaterialValidForType,
-            (Material itemMaterial) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add '" + itemMaterial.name() + "'"); },
-            (Material itemMaterial) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + itemMaterial.name() + "' that is not valid for this type, material ignored"); }
-        );
+        listMaterial = findMaterials("names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
             getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found no item!");
@@ -122,74 +119,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
         }
         else
         {   // Read put / remove material
-            if (    !readMaterial(_mapItems, "put", lstPutMaterials, true)
-                 || !readMaterial(_mapItems, "remove", lstRemoveMaterials, true))
-            {
-                bRet = false;
-            }
-        }
-        if (lstPutMaterials.isEmpty() && lstRemoveMaterials.isEmpty())
-        {   // Should have at least one of both
-            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no material found for at least one of both put / remove, ignored!");
-            // bRet = false; No, not a critical error, just ignore __LECTERN__ configuration
-        }
-        lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
-                (String strRegionName) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
-                (String strRegionName) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
-        );
-        String strRemoveForbiddenMessage =  ChatColor.translateAlternateColorCodes('&', (String) _mapItems.get("remove_forbidden_message"));
-        if (lstRegions.isEmpty())
-        {
-            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no region found, ignored!");
-        }
-        else
-        {   // All is OK, add it
-            LecternMaterialManager.InformationsLecternMaterial infos = new LecternMaterialManager.InformationsLecternMaterial();
-            infos.m_lstMaterials                = new HashSet<>(listMaterial);
-            infos.m_lstPutMaterials             = lstPutMaterials;
-            infos.m_lstRemoveMaterials          = lstRemoveMaterials;
-            infos.m_lstRegions                  = lstRegions;
-            infos.m_strRemoveForbiddenMessage   = strRemoveForbiddenMessage;
-            // To optimize time search, combine world name with material
-            for (String strRegionName : lstRegions)
-            {
-                for (Material material : listMaterial)
-                {
-                    String strKey = strRegionName + "_._" + material.name();
-                    if (m_mapInformationsLecternMaterial.containsKey(strKey))
-                    {
-                        getPlugin().getLogger().severe("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
-                        bRet = false;
-                        break;
-                    }
-                    m_mapInformationsLecternMaterial.put(strKey, infos);
-                }
-                if (!bRet)
-                {
-                    break;
-                }
-            }
-        }
-
-        return bRet;
-    }
-
-    /**
-     * Read material.
-     *
-     * @param _mapItems Configuration that contains datas.
-     * @param _strKey Key into this configuration to read.
-     * @param _lstMaterialsInformation Materials information list to fill.
-     * @param _bIsEmptyAllowed If empty is not allowed, return false if the key doesn't exists, else just
-     *                         not fill _lstMaterialsInformation.
-     * @return true if no error, false else.
-     */
-    private boolean readMaterial(Map<String, Object> _mapItems, String _strKey, List<MaterialInformation> _lstMaterialsInformation, boolean _bIsEmptyAllowed)
-    {
-        boolean bRet = true;
-        if (_mapItems.containsKey(_strKey))
-        {
-            List<MaterialInformation> lstMaterialsInformation = findMaterialsX(_strKey, _mapItems,
+            Function<MaterialInformation, Boolean> lamdaCheckIsValid =
                 (MaterialInformation materialInformation) ->
                     {   // Check if MaterialInformation is valid
                         boolean bRetValidMaterialInfo = false;
@@ -205,34 +135,68 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                                 }
                                 case Material.WRITTEN_BOOK:
                                 {   // For written book, only some extra properties are allowed
-                                    bRetValidMaterialInfo = materialInformation.getProperties().keySet().stream().allMatch(strPropName -> strPropName.equals("author") || strPropName.equals("title"));
+                                    bRetValidMaterialInfo = materialInformation.getProperties()
+                                        .keySet()
+                                        .stream()
+                                        .allMatch((strPropName) ->
+                                        {
+                                            return    strPropName.equals("author")
+                                                   || strPropName.equals("title");
+                                        });
                                     break;
                                 }
                             }
                         }
                         return bRetValidMaterialInfo;
-                    },
-                (MaterialInformation materialInformation) ->
-                    {
-                        getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add " + _strKey + ": " + materialInformation.toString());
-                    },
-                (MaterialInformation materialInformation) ->
-                    {
-                        getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + materialInformation.toString() + "' that is not valid to " + _strKey + "material ignored. ");
-                    }
-            );
-            if (lstMaterialsInformation != null)
-            {
-                _lstMaterialsInformation.addAll(lstMaterialsInformation);
-            }
-            else
+                    };
+
+            if (    !readMaterial("put", _mapItems, lstPutMaterials, true, lamdaCheckIsValid)
+                 || !readMaterial("remove", _mapItems, lstRemoveMaterials, true, lamdaCheckIsValid))
             {
                 bRet = false;
             }
-        }
-        else if (!_bIsEmptyAllowed)
-        {
-            bRet = false;
+            if (lstPutMaterials.isEmpty() && lstRemoveMaterials.isEmpty())
+            {   // Should have at least one of both
+                getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no material found for at least one of both put / remove, ignored!");
+                // bRet = false; No, not a critical error, just ignore __LECTERN__ configuration
+            }
+            lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
+                    (String strRegionName) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
+                    (String strRegionName) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
+            );
+            String strRemoveForbiddenMessage =  ChatColor.translateAlternateColorCodes('&', (String) _mapItems.get("remove_forbidden_message"));
+            if (lstRegions.isEmpty())
+            {
+                getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no region found, ignored!");
+            }
+            else
+            {   // All is OK, add it
+                LecternMaterialManager.InformationsLecternMaterial infos = new LecternMaterialManager.InformationsLecternMaterial();
+                infos.m_lstMaterials                = new HashSet<>(listMaterial);
+                infos.m_lstPutMaterials             = lstPutMaterials;
+                infos.m_lstRemoveMaterials          = lstRemoveMaterials;
+                infos.m_lstRegions                  = lstRegions;
+                infos.m_strRemoveForbiddenMessage   = strRemoveForbiddenMessage;
+                // To optimize time search, combine world name with material
+                for (String strRegionName : lstRegions)
+                {
+                    for (Material material : listMaterial)
+                    {
+                        String strKey = strRegionName + "_._" + material.name();
+                        if (m_mapInformationsLecternMaterial.containsKey(strKey))
+                        {
+                            getPlugin().getLogger().severe("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
+                            bRet = false;
+                            break;
+                        }
+                        m_mapInformationsLecternMaterial.put(strKey, infos);
+                    }
+                    if (!bRet)
+                    {
+                        break;
+                    }
+                }
+            }
         }
 
         return bRet;
@@ -340,10 +304,9 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                                     if (itemInLecternToTest.getItemMeta() instanceof BookMeta meta)
                                     {
                                         bRet = item.getProperties().entrySet().stream().allMatch(prop ->
-                                        {
-                                            return     (prop.getKey().equals("title")  && meta.getTitle()  != null && meta.getTitle().equals(prop.getValue()))
-                                                    || (prop.getKey().equals("author") && meta.getAuthor() != null && meta.getAuthor().equals(prop.getValue()));
-                                        });
+                                               (prop.getKey().equals("title")  && meta.getTitle()  != null && meta.getTitle().equals(prop.getValue()))
+                                            || (prop.getKey().equals("author") && meta.getAuthor() != null && meta.getAuthor().equals(prop.getValue()))
+                                        );
                                     }
                                 }
                             }

@@ -13,6 +13,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Base class for all MaterialManagers class.
@@ -122,21 +123,90 @@ public abstract class AMaterialManager  implements IMaterialManager
     }
 
     /**
-     * Get a list of materials from a name.
+     * Read material with extra informations.
      *
      * @param _strKeyName Key name to retrieve the list of materials informations (name / regex and extra informations).
      * @param _mapItems Map where to find informations.
+     * @param _lstMaterialsInformation Materials information list to fill.
+     * @param _bIsEmptyAllowed If empty is not allowed, return false if the key doesn't exists, else just
+     *                         not fill _lstMaterialsInformation.
      * @param _lambdaIsMaterialInformationValid Lambda to check if the material information is valid for this search.
+     *                                          If null all is allowed.
+     * @return true if no error, false else.
+     */
+    protected boolean readMaterial(String _strKeyName, Map<String, Object> _mapItems, List<MaterialInformation> _lstMaterialsInformation, boolean _bIsEmptyAllowed, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid)
+    {
+        boolean bRet = true;
+        if (_mapItems.containsKey(_strKeyName))
+        {
+            List<MaterialInformation> lstMaterialsInformation = findMaterialsWithProperties(_strKeyName, _mapItems, _lambdaIsMaterialInformationValid,
+                (MaterialInformation materialInformation) ->
+                    {
+                        getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add " + _strKeyName + ": " + materialInformation.toString());
+                    },
+                (MaterialInformation materialInformation) ->
+                    {
+                        getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + materialInformation.toString() + "' that is not valid to " + _strKeyName + "material ignored. ");
+                    }
+            );
+            if (lstMaterialsInformation != null)
+            {
+                _lstMaterialsInformation.addAll(lstMaterialsInformation);
+            }
+            else
+            {
+                bRet = false;
+            }
+        }
+        else if (!_bIsEmptyAllowed)
+        {
+            bRet = false;
+        }
+
+        return bRet;
+    }
+
+    /**
+     * Get a list of materials from a _listMaterialNames.
+     *
+     * @param _strKeyName Key name to retrieve the list of materials informations (name / regex and extra informations).
+     * @param _mapItems Map where to find informations.
+     * @param _lambdaIsMaterialValid Lambda to check if the material is valid for this search.
+     * @return An allowed material list.
+     */
+    protected List<Material> findMaterials(String _strKeyName, Map<String, Object> _mapItems, Function<Material, Boolean> _lambdaIsMaterialValid)
+    {
+        List<Material> listMaterials = new ArrayList<Material>();
+        List<MaterialInformation> lstMaterialsInformation = new ArrayList<MaterialInformation>();
+        if (readMaterial(_strKeyName, _mapItems, lstMaterialsInformation, false, (MaterialInformation itemMaterialInformation) ->
+            {
+                return    itemMaterialInformation != null
+                       && itemMaterialInformation.getMaterial() != null
+                       &&  itemMaterialInformation.getProperties().isEmpty()
+                       && _lambdaIsMaterialValid.apply(itemMaterialInformation.getMaterial());
+            }))
+        {
+            listMaterials.addAll(lstMaterialsInformation.stream()   // Use stream
+                .map(MaterialInformation::getMaterial)              // Transfor each MaterialInformation to Material
+                .toList());                                         // Collect to List<Material>
+        }
+
+        return listMaterials;
+    }
+
+    /**
+     * Get a list of materials from a name.
+     *
+     * @param _strKeyName Key name to retrieve the list of materials information (name / regex and extra information).
+     * @param _mapItems Map where to find information.
+     * @param _lambdaIsMaterialInformationValid Lambda to check if the material information is valid for this search.
+     *                                          If null all is allowed.
      * @param _lambdaInfoAdd Lambda to display log that this material is added.
      * @param _lambdaInfoInvalid Lambda to display log that this material is not added (but should be).
-     * @return An allowed material informations list.
+     * @return An allowed material information list.
      */
-    protected List<MaterialInformation> findMaterialsX(String _strKeyName, Map<String, Object> _mapItems, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid, Consumer<MaterialInformation> _lambdaInfoAdd, Consumer<MaterialInformation> _lambdaInfoInvalid)
+    private List<MaterialInformation> findMaterialsWithProperties(String _strKeyName, Map<String, Object> _mapItems, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid, Consumer<MaterialInformation> _lambdaInfoAdd, Consumer<MaterialInformation> _lambdaInfoInvalid)
     {
-        if (_lambdaIsMaterialInformationValid == null)
-        {
-            throw new NullPointerException("AMaterialManager::findMaterials : _lambdaIsMaterialInformationValid argument is null");
-        }
         ArrayList<Object> listMaterialInformations = (ArrayList<Object>) _mapItems.get(_strKeyName);
         List<MaterialInformation> listMaterialsInformations = new ArrayList<MaterialInformation>();
         Map<String, String> dicProperties = new HashMap<String, String>();
@@ -147,7 +217,7 @@ public abstract class AMaterialManager  implements IMaterialManager
             for (Material itemMaterial : Material.values())
             {
                 MaterialInformation materialInformation = new MaterialInformation(itemMaterial, null);
-                if (_lambdaIsMaterialInformationValid.apply(materialInformation))
+                if (_lambdaIsMaterialInformationValid == null || _lambdaIsMaterialInformationValid.apply(materialInformation))
                 {
                     listMaterialsInformations.add(materialInformation);
                     if (getPlugin().isVerboseLogEnabled() && _lambdaInfoAdd != null)
@@ -261,85 +331,6 @@ public abstract class AMaterialManager  implements IMaterialManager
         }
 
         return listMaterialsInformations;
-    }
-
-    /**
-     * Get a list of materials from a _listMaterialNames.
-     *
-     * @param _listMaterialNames List of materials names or regex.If empty, take all possible.
-     * @param _lambdaIsValid Lambda to check if the material is valid for this search.
-     * @param _lambdaInfoAdd Lambda to display log that this material is added.
-     * @param _lambdaInfoInvalid Lambda to display log that this material is not added (but should be).
-     * @return An allowed material list.
-     */
-    protected List<Material> findMaterials(ArrayList<String> _listMaterialNames, Function<Material, Boolean> _lambdaIsValid, Consumer<Material> _lambdaInfoAdd, Consumer<Material> _lambdaInfoInvalid)
-    {
-        if (_lambdaIsValid == null)
-        {
-            throw new NullPointerException("AMaterialManager::findMaterials : _lambdaIsValid argument is null");
-        }
-        List<Material> listMaterials = new ArrayList<Material>();
-
-        // Read all materials
-        if (_listMaterialNames.isEmpty())
-        {   // Empty list, take all material that are valid
-            for (Material itemMaterial : Material.values())
-            {
-                if (_lambdaIsValid.apply(itemMaterial))
-                {
-                    if (getPlugin().isVerboseLogEnabled() && _lambdaInfoAdd != null)
-                    {
-                        _lambdaInfoAdd.accept(itemMaterial);
-                    }
-                    listMaterials.add(itemMaterial);
-                }
-            }
-        }
-        else
-        {
-            for (String strItemName : _listMaterialNames)
-            {
-                Material itemMaterialFound = Material.getMaterial(strItemName);
-                if (itemMaterialFound == null)
-                {   // Not found, try to find with regex
-                    Pattern pattern = Pattern.compile(strItemName); // CASE_SENSITIVE
-
-                    for (Material itemMaterial : Material.values())
-                    {
-                        if (pattern.matcher(itemMaterial.name()).find())
-                        {
-                            if (_lambdaIsValid.apply(itemMaterial))
-                            {
-                                if (getPlugin().isVerboseLogEnabled())
-                                {
-                                    _lambdaInfoAdd.accept(itemMaterial);
-                                }
-                                listMaterials.add(itemMaterial);
-                            }
-                            else
-                            {   // Not valid, ignore it
-                                _lambdaInfoInvalid.accept(itemMaterial);
-                            }
-                        }
-                        // else : ignore it
-                    }
-                }
-                else if (_lambdaIsValid.apply(itemMaterialFound))
-                {
-                    if (getPlugin().isVerboseLogEnabled())
-                    {
-                        _lambdaInfoAdd.accept(itemMaterialFound);
-                    }
-                    listMaterials.add(itemMaterialFound);
-                }
-                else
-                {   // Not valid, ignore it
-                    _lambdaInfoInvalid.accept(itemMaterialFound);
-                }
-            }
-        }
-
-        return listMaterials;
     }
 
     /**

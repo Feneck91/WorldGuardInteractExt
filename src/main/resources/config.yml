@@ -26,11 +26,18 @@ items:
       # Put  [] to accept all regions
       # regions: ["myworld.region_1", "myworld.region_2"],
       regions: [], # All regions
+      # May be inflame can work with other materials
       inflame: ["FLINT_AND_STEEL", "FIRE_CHARGE"],
-      # Here, use a regex to specify shovel you want (here all SHOVEL) or specify only some tools.
-      # You can use AIR to be able to extinguish firecamp with hand (not possible in Minecraft)
-      # You can use WATER_BUCKET: in this case when a firecamp is extinguish with WATER_BUCKET, it's work and
-      # the water is removed just after (in normal way, the water is keep and spread everywhere).
+      # Here, use a regex to specify shovel (for example) you want (here all SHOVEL) or specify only some tools.
+      # - You can use AIR to be able to extinguish firecamp with hand (not possible in Minecraft)
+      # - You can use WATER_BUCKET: in this case when a firecamp is extinguished with WATER_BUCKET, it's work and
+      #     the water is removed just after (in normal way, the water is keep and spread everywhere).
+      # - For SHOVEL, you can specify name / lore (only first item is checked) to accept only a special shovel like:
+      #     { material : "DIAMOND_SHOVEL", name : "My shovel", lore : "Create by me" }
+      #     Note : You can use regex for name into the previous line to accept several shovel materials for same
+      #            extra information.
+      #     Note : You must add color into text if the name / lore has color.
+      #            See colors codes: https://minecraft.wiki/w/Formatting_codes
       extinguish: [".+_SHOVEL"],
     },
     {

@@ -12,8 +12,13 @@ import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BookMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Class that implements MaterialManager for campfire materials.
@@ -43,12 +48,12 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
         /**
          * Material allowed to inflame.
          */
-        public Set<Material> m_lstInflameMaterials;
+        public List<MaterialInformation> m_lstInflameMaterials;
 
         /**
          * Material allowed to extinguish fire.
          */
-        public Set<Material> m_lstExtinguishMaterials;
+        public List<MaterialInformation> m_lstExtinguishMaterials;
     };
 
     /**
@@ -94,85 +99,105 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
      * Read a piece of configuration about camp fire.
      *
      * @param _mapItems Maps items Config to read.
-     * @return true if _mapItems is read without error, false else.
+     * @return true if _mapItems is read without fatal error (but could be ignored), false else.
      */
     @Override
     public boolean readConfig(Map<String, Object> _mapItems)
     {
         boolean bRet = true;
         List<Material> listMaterial = null;
-        List<Material> listInflame = new ArrayList<Material>();
-        List<Material> listExtinguish = new ArrayList<Material>();
+        List<MaterialInformation> listInflame = new ArrayList<MaterialInformation>();
+        List<MaterialInformation> listExtinguish = new ArrayList<MaterialInformation>();
         Set<String> lstRegions;
 
-        listMaterial = findMaterials((ArrayList<String>) _mapItems.get("names"),
-                                     this::isMaterialValidForType,
-                                     (Material itemMaterial) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add '" + itemMaterial.name() + "'"); },
-                                     (Material itemMaterial) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + itemMaterial.name() + "' that is not valid for this type, material ignored"); }
-                                    );
+        listMaterial = findMaterials("names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
             getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found no item!");
             // bRet = false; No, not a critical error, just ignore __CAMPFIRE__ configuration
         }
         else
-        {   // Read inflame
-            if (_mapItems.containsKey("inflame"))
-            {
-                listInflame = findMaterials((ArrayList<String>) _mapItems.get("inflame"),
-                                            (Material itemMaterial) -> { return true; },
-                                            (Material itemMaterial) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add inflame '" + itemMaterial.name() + "'"); },
-                                            (Material itemMaterial) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + itemMaterial.name() + "' that is not valid to inflame, material ignored"); }
-                                           );
-
-            }
-            if (_mapItems.containsKey("extinguish"))
-            {
-                listExtinguish = findMaterials((ArrayList<String>) _mapItems.get("extinguish"),
-                                               (Material itemMaterial) -> { return true; },
-                                               (Material itemMaterial) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add extinguish '" + itemMaterial.name() + "'"); },
-                                               (Material itemMaterial) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + itemMaterial.name() + "' that is not valid to extinguish, material ignored"); }
-                                              );
-
-            }
-        }
-        if (listInflame.isEmpty() && listExtinguish.isEmpty())
-        {   // Should have at least one of both
-            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no material found for at least one of both inflame / extinguish, ignored!");
-            // bRet = false; No, not a critical error, just ignore __CAMPFIRE__ configuration
-        }
-        lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
-                                 (String strRegionName) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
-                                 (String strRegionName) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
-                                );
-        if (lstRegions.isEmpty())
         {
-            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no region found, ignored!");
-        }
-        else
-        {   // All is OK, add it
-            InformationsCampFireMaterial infos = new InformationsCampFireMaterial();
-            infos.m_lstMaterials           = new HashSet<>(listMaterial);
-            infos.m_lstInflameMaterials    = new HashSet<>(listInflame);
-            infos.m_lstExtinguishMaterials = new HashSet<>(listExtinguish);
-            infos.m_lstRegions             = lstRegions;
-            // To optimize time search, combine world name with material
-            for (String strRegionName : lstRegions)
+            Function<MaterialInformation, Boolean> lambdaCheckIsValid =
+                (MaterialInformation materialInformation) ->
+                    {   // Check if MaterialInformation is valid
+                        boolean bRetValidMaterialInfo = false;
+
+                        if (materialInformation != null && materialInformation.getMaterial() != null)
+                        {
+                            switch (materialInformation.getMaterial())
+                            {
+                                case Material.WOODEN_SHOVEL:
+                                case Material.STONE_SHOVEL:
+                                case Material.GOLDEN_SHOVEL:
+                                case Material.DIAMOND_SHOVEL:
+                                case Material.NETHERITE_SHOVEL:
+                                {   // For shovel, only some extra properties are allowed
+                                    bRetValidMaterialInfo = materialInformation.getProperties()
+                                        .keySet()
+                                        .stream()
+                                        .allMatch((strPropName) ->
+                                              strPropName.equals("name")
+                                           || strPropName.equals("lore"));
+                                    break;
+                                }
+                                default:
+                                {   // For others, no extra properties are allowed
+                                    bRetValidMaterialInfo = materialInformation.getProperties().isEmpty();
+                                    break;
+                                }
+                            }
+                        }
+                        return bRetValidMaterialInfo;
+                    };
+
+            // Read inflame
+            if (   readMaterial("inflame", _mapItems, listInflame, true, lambdaCheckIsValid)
+                   // Read extinguish
+                && readMaterial("extinguish", _mapItems, listExtinguish, true, lambdaCheckIsValid))
             {
-                for (Material material : listMaterial)
-                {
-                    String strKey = strRegionName + "_._" + material.name();
-                    if (m_mapInformationsCampFireMaterial.containsKey(strKey))
-                    {
-                        getPlugin().getLogger().severe("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
-                        bRet = false;
-                        break;
-                    }
-                    m_mapInformationsCampFireMaterial.put(strKey, infos);
+                if (listInflame.isEmpty() && listExtinguish.isEmpty())
+                {   // Should have at least one of both
+                    getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no material found for at least one of both inflame / extinguish, ignored!");
+                    // bRet = false; No, not a critical error, just ignore __CAMPFIRE__ configuration
                 }
-                if (!bRet)
+                else
                 {
-                    break;
+                    lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
+                                             (String strRegionName) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
+                                             (String strRegionName) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
+                                            );
+                    if (lstRegions.isEmpty())
+                    {
+                        getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no region found, ignored!");
+                    }
+                    else
+                    {   // All is OK, add it
+                        InformationsCampFireMaterial infos = new InformationsCampFireMaterial();
+                        infos.m_lstMaterials           = new HashSet<>(listMaterial);
+                        infos.m_lstInflameMaterials    = listInflame;
+                        infos.m_lstExtinguishMaterials = listExtinguish;
+                        infos.m_lstRegions             = lstRegions;
+                        // To optimize time search in events, combine world name with material
+                        for (String strRegionName : lstRegions)
+                        {
+                            for (Material material : listMaterial)
+                            {
+                                String strKey = strRegionName + "_._" + material.name();
+                                if (m_mapInformationsCampFireMaterial.containsKey(strKey))
+                                {
+                                    getPlugin().getLogger().severe("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
+                                    bRet = false;
+                                    break;
+                                }
+                                m_mapInformationsCampFireMaterial.put(strKey, infos);
+                            }
+                            if (!bRet)
+                            {
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -224,13 +249,15 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
             // Here, we are sure, _block.getType() is Flammable
             if (_block.getBlockData() instanceof Lightable lightableBlockData)
             {
-                Material causeMaterial = null;
+                final ItemStack handItem;       // If the user have an item into his hand
+                final Material causeMaterial;   // Can be handItem material or other if handItem is null
 
                 if (_event instanceof PlayerInteractEvent playerInteractEvent)
                 {
-                    causeMaterial = playerInteractEvent.getItem() == null
+                    handItem = playerInteractEvent.getItem();
+                    causeMaterial = (handItem == null)
                         ? Material.AIR
-                        : playerInteractEvent.getItem().getType();
+                        : handItem.getType();
                     player = playerInteractEvent.getPlayer();
                 }
                 else if (_event instanceof BlockIgniteEvent blockIgniteEvent)
@@ -238,10 +265,12 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     player = blockIgniteEvent.getPlayer();
                     if (player != null)
                     {   // If the fire ignit with player
-                        causeMaterial = player.getInventory().getItemInMainHand().getType();
+                        handItem = player.getInventory().getItemInMainHand();
+                        causeMaterial = handItem.getType();
                     }
                     else if (blockIgniteEvent.getIgnitingEntity() != null)
                     {   // If the fire ignit with entity (like mob, arrow, etc)
+                        handItem = null;
                         Entity igniter = blockIgniteEvent.getIgnitingEntity();
 
                         if (igniter instanceof Projectile projectile)
@@ -266,6 +295,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     }
                     else
                     {
+                        handItem = null;
                         switch (blockIgniteEvent.getCause())
                         {
                             case LAVA           -> causeMaterial = Material.LAVA;
@@ -277,62 +307,96 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                         }
                     }
                 }
+                else
+                {
+                    handItem = null;
+                    causeMaterial = null;
+                }
+                // Create lambda function
+                Predicate<? super MaterialInformation> lambaIsAllowedMaterial = (MaterialInformation item) ->
+                {
+                    boolean bRet = false;
+                    if (causeMaterial.equals(item.getMaterial()))
+                    {   // Check if has properties
+                        if (item.getProperties().isEmpty())
+                        {
+                            bRet = true; // Ok this material is allowed to be used
+                        }
+                        else if (handItem != null)
+                        {   // Check properties
+                            bRet = true;
+                            if (handItem.hasItemMeta())
+                            {   // Only if has META
+                                final ItemMeta itemMeta = Objects.requireNonNull(handItem.getItemMeta()); // Cannot be null here
+                                bRet = item.getProperties().entrySet().stream().allMatch(prop ->
+                                       (prop.getKey().equals("name") && itemMeta.hasDisplayName() && itemMeta.getDisplayName().equals(prop.getValue()))
+                                    || (prop.getKey().equals("lore") && itemMeta.hasLore() && !itemMeta.getLore().isEmpty() && itemMeta.getLore().get(0).equals(prop.getValue()))
+                                );
+                            }
+                        }
+                    }
+                    return bRet;
+                };
+
                 if (lightableBlockData.isLit())
                 {   // 🔥 Stop fire with shovel or other (in m_lstExtinguishMaterials)
-                    if (infosFire.m_lstExtinguishMaterials.contains(causeMaterial))
+                    if (causeMaterial != null)
                     {
-                        interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
-                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
-                        // For bucket
-                        if (causeMaterial != null && causeMaterial.name().endsWith("BUCKET"))
+                        if (infosFire.m_lstExtinguishMaterials.stream().anyMatch(lambaIsAllowedMaterial))
                         {
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
-                                causeMaterial.equals(Material.WATER_BUCKET)
-                                    ? (event) ->
-                                        {
-                                            if (event instanceof PlayerBucketEmptyEvent playerBucketEmptyEvent)
-                                            {   // Let action to do (the fire will be extinguish automatically), then
-                                                // remove water 1 tick after
-                                                Bukkit.getScheduler().runTaskLater(getPlugin(), () ->
-                                                {
-                                                    lightableBlockData.setLit(false);
-                                                    _block.setBlockData(lightableBlockData);
-                                                    if (getPlugin().isVerboseLogEnabled())
+                            interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                            // For bucket
+                            if (causeMaterial.name().endsWith("BUCKET"))
+                            {
+                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
+                                    causeMaterial.equals(Material.WATER_BUCKET)
+                                        ? (event) ->
+                                            {
+                                                if (event instanceof PlayerBucketEmptyEvent playerBucketEmptyEvent)
+                                                {   // Let action to do (the fire will be extinguish automatically), then
+                                                    // remove water 1 tick after
+                                                    Bukkit.getScheduler().runTaskLater(getPlugin(), () ->
                                                     {
-                                                        getPlugin().getLogger().info("Remove water after extinguish fire camp with water bucket");
-                                                    }
-                                                }, 1L); // 1 tick later: water is placed, we can remove it
+                                                        lightableBlockData.setLit(false);
+                                                        _block.setBlockData(lightableBlockData);
+                                                        if (getPlugin().isVerboseLogEnabled())
+                                                        {
+                                                            getPlugin().getLogger().info("Remove water after extinguish fire camp with water bucket");
+                                                        }
+                                                    }, 1L); // 1 tick later: water is placed, we can remove it
+                                                }
                                             }
-                                        }
-                                    : null));
-                        }
-                        else
-                        {
-                            if (causeMaterial != null && causeMaterial.equals(Material.AIR))
-                            {   // Trying to stop fire with hand only : no BlockPlaceEvent and lambda for PlayerInteractEvent HIGHEST
-                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
-                                    (event) ->
-                                    {   // Replace by not burn item
-                                        lightableBlockData.setLit(false);
-                                        _block.setBlockData(lightableBlockData);
-                                        // And play sound
-                                        _block.getWorld().playSound(_block.getLocation(), "block.fire.extinguish", 1.0f, 1.0f);
-                                    }));
+                                        : null));
                             }
                             else
-                            {   // Normal way
-                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
-                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
-                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                            {
+                                if (causeMaterial.equals(Material.AIR))
+                                {   // Trying to stop fire with hand only : no BlockPlaceEvent and lambda for PlayerInteractEvent HIGHEST
+                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
+                                        (event) ->
+                                        {   // Replace by not burn item
+                                            lightableBlockData.setLit(false);
+                                            _block.setBlockData(lightableBlockData);
+                                            // And play sound
+                                            _block.getWorld().playSound(_block.getLocation(), "block.fire.extinguish", 1.0f, 1.0f);
+                                        }));
+                                }
+                                else
+                                {   // Normal way
+                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                                }
                             }
                         }
                     }
                 }
                 else
                 {   // 🔥 Start fire with fire charge or flint and steel or other
-                    if (infosFire.m_lstInflameMaterials.contains(causeMaterial))
+                    if (infosFire.m_lstInflameMaterials.stream().anyMatch(lambaIsAllowedMaterial))
                     {
                         interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
 
