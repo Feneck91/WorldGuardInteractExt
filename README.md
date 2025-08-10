@@ -11,6 +11,8 @@ Where you are using WorldGuard, if you often use block-break to deny you will no
 If you let block-break to allow, you will able to do some action on these blocks but also break the blocks into the area.
 This is why this plugin was created, to add more interaction rules by disable temporary the WorldGuard rules for some interaction only.
 
+You can see the documentation [here](docs/javadoc/index.html).
+
 # Versions history:
   - __1.0__ : 2025/08/08
     This first version allow to manage __camp fire__ :
@@ -27,7 +29,6 @@ This is why this plugin was created, to add more interaction rules by disable te
 
 # The configuration file (config.yaml):
 ```yaml
-#
 # WorldGuardInteractExt configuration file
 #
 # WARNING: This file is based on WorldGuard region configuration.
@@ -56,7 +57,8 @@ items:
       # Put  [] to accept all regions
       # regions: ["myworld.region_1", "myworld.region_2"],
       regions: [], # All regions
-      # May be inflame can work with other materials
+      # May be inflame can work with other materials.
+      # If empty, search all material. If no material remove this entry.
       inflame: ["FLINT_AND_STEEL", "FIRE_CHARGE"],
       # Here, use a regex to specify shovel (for example) you want (here all SHOVEL) or specify only some tools.
       # - You can use AIR to be able to extinguish firecamp with hand (not possible in Minecraft)
@@ -68,6 +70,7 @@ items:
       #            extra information.
       #     Note : You must add color into text if the name / lore has color.
       #            See colors codes: https://minecraft.wiki/w/Formatting_codes
+      # If empty, search all material. If no material remove this entry.
       extinguish: [".+_SHOVEL"],
     },
     {
@@ -81,15 +84,16 @@ items:
       regions: [], # All regions
       # For WRITTEN_BOOK, you can specify author and / or title to accept only a special book.
       # For WRITABLE_BOOK, only WRITABLE_BOOK can be specify.
+      # If empty, search all material. If no material remove this entry.
       put: [ "WRITABLE_BOOK", { "material" : "WRITTEN_BOOK", "author" : "This is the author", "title" : "The title of the book" } ],
       # This lines are also accepted too!
       # put: [ "WRITABLE_BOOK", "WRITTEN_BOOK" ],
       # put: [ ".+_BOOK" ],
-      # Same for remove
+      # If empty, search all material. If no material remove this entry.
       remove: ["WRITABLE_BOOK", "WRITTEN_BOOK"],
       # Message to the user if he try to remove a book from Lectern and this action is forbidden (WorldGuard don't display message)
       # See colors codes: https://minecraft.wiki/w/Formatting_codes
       remove_forbidden_message: "&eYou cannot remove this book!"
     }
   ]
-  ```
+```

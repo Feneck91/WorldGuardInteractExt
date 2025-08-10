@@ -68,11 +68,16 @@ public class MaterialConfig
     {
         return String.join(", ", m_mapMaterialManagers.keySet());
     }
+
     /**
      * Read the configuration.
      *
      * @param _config Configuration to read.
      * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
+     * @return true if no critical error has been encounter, false else.
+     * <p>
+     *     When return true, warning can be encountered, some part of the configuration file may be ignored.
+     * </p>
      */
     public boolean ReadConfig(FileConfiguration _config, LoggerDispatcher _logger)
     {

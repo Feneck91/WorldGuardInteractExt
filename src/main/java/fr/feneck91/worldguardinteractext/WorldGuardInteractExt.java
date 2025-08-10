@@ -78,7 +78,7 @@ public class WorldGuardInteractExt extends JavaPlugin
     @Override
     public void onEnable()
     {
-        if (readConfiguration(false, null))
+        if (readConfiguration(false, new LoggerDispatcher(this, null)))
         {
             if (isVerboseLogEnabled())
             {

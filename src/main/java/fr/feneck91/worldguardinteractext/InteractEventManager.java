@@ -20,15 +20,40 @@ import java.util.function.Consumer;
  */
 public class InteractEventManager implements Listener
 {
+    /**
+     * Class used to manage one Minecraft event.
+     */
     public static class InteractEventsInfos
     {
+        /**
+         * Information about the event.
+         */
         public static class EventInfos
         {
+            /**
+             * Enum to know how to manage the event.
+             */
             public enum eCancelType
             {
+                /**
+                 * Ignore the event, do nothing.
+                 */
                 eCancelTypeIgnore,
+
+                /**
+                 * Cancel the event.
+                 */
                 eCancelTypeCancel,
+
+                /**
+                 * Uncancel the event.
+                 */
                 eCancelTypeUncancel,
+
+                /**
+                 * Sometime another event will be emitted, for this event, ask to recompute all next event managment to
+                 * know what to do for this action.
+                 */
                 eCancelTypeRecompute,
             };
 
@@ -457,8 +482,9 @@ public class InteractEventManager implements Listener
 
     /**
      * Called when plugin is activated.
-     * <p/>
+     * <p>
      * Used to register events.
+     * </p>
      */
     public void onEnable()
     {
@@ -467,8 +493,9 @@ public class InteractEventManager implements Listener
 
     /**
      * Called when plugin is disabled.
-     * <p/>
+     * <p>
      * Used to unregister events.
+     * </p>
      */
     public void onDisable()
     {
@@ -699,6 +726,11 @@ public class InteractEventManager implements Listener
         }
     }
 
+    /**
+     * When a player take a book from a lectern.
+     *
+     * @param _event The event.
+     */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onPlayerTakeLecternBookEventLowest(PlayerTakeLecternBookEvent _event)
     {
