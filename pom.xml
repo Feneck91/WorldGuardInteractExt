@@ -53,7 +53,6 @@
                     <target>21</target>
                 </configuration>
             </plugin>
-
             <!-- Plugin to copy .jar after the build -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -70,10 +69,31 @@
                                 <copy file="${project.build.directory}/${project.build.finalName}.jar"
                                       todir="server/plugins/"
                                       overwrite="true"/>
+                                <copy file="${project.build.directory}/${project.build.finalName}.jar"
+                                      todir="jar/"
+                                      overwrite="true"/>
                             </target>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <!-- Plugin javadoc  -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>generate-javadocs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>javadoc</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <destDir>../../../javadocs</destDir>
+                </configuration>
             </plugin>
         </plugins>
     </build>
