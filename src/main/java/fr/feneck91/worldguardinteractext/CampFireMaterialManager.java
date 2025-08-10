@@ -99,10 +99,11 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
      * Read a piece of configuration about camp fire.
      *
      * @param _mapItems Maps items Config to read.
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      * @return true if _mapItems is read without fatal error (but could be ignored), false else.
      */
     @Override
-    public boolean readConfig(Map<String, Object> _mapItems)
+    public boolean readConfig(Map<String, Object> _mapItems, LoggerDispatcher _logger)
     {
         boolean bRet = true;
         List<Material> listMaterial = null;
@@ -113,7 +114,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
         listMaterial = findMaterials("names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
-            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found no item!");
+            _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found no item!");
             // bRet = false; No, not a critical error, just ignore __CAMPFIRE__ configuration
         }
         else
@@ -158,18 +159,18 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
             {
                 if (listInflame.isEmpty() && listExtinguish.isEmpty())
                 {   // Should have at least one of both
-                    getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no material found for at least one of both inflame / extinguish, ignored!");
+                    _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no material found for at least one of both inflame / extinguish, ignored!");
                     // bRet = false; No, not a critical error, just ignore __CAMPFIRE__ configuration
                 }
                 else
                 {
                     lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
-                                             (String strRegionName) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
-                                             (String strRegionName) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
+                                             (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
+                                             (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
                                             );
                     if (lstRegions.isEmpty())
                     {
-                        getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no region found, ignored!");
+                        _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no region found, ignored!");
                     }
                     else
                     {   // All is OK, add it
@@ -186,7 +187,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                                 String strKey = strRegionName + "_._" + material.name();
                                 if (m_mapInformationsCampFireMaterial.containsKey(strKey))
                                 {
-                                    getPlugin().getLogger().severe("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
+                                    _logger.sendErrorMessage("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
                                     bRet = false;
                                     break;
                                 }
@@ -207,12 +208,14 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
 
     /**
      * Display material available for this material type.
+     *
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      */
     @Override
-    public void displayMaterials()
+    public void displayMaterials(LoggerDispatcher _logger)
     {
-        getPlugin().getLogger().info("Display material for " + getMaterialType());
-        getPlugin().getLogger().info("🔥 = Flammable / B = Burnable / 🛢 = Is Fuel");
+        _logger.sendMessage("Display material for " + getMaterialType());
+        _logger.sendMessage("🔥 = Flammable / B = Burnable / 🛢 = Is Fuel");
         for (Material material : Material.values())
         {
             if (material.isFlammable() || material.isBurnable() || material.isFuel())
@@ -222,7 +225,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                 strInfos.append(material.isBurnable() ? "B / " : "☐ / ");
                 strInfos.append(material.isFuel() ? "🛢" : "☐");
 
-                getPlugin().getLogger().info(strInfos.toString() + " ==> " + material.name());
+                _logger.sendMessage(strInfos.toString() + " ==> " + material.name());
             }
         }
     }

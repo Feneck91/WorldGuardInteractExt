@@ -60,11 +60,21 @@ public class MaterialConfig
     }
 
     /**
-     * Constructor.
+     * Get the list of all materials types separate with comma.
+     *
+     * @return A list of all materials managed by this plugin.
+     */
+    public String getAllMaterialsTypes()
+    {
+        return String.join(", ", m_mapMaterialManagers.keySet());
+    }
+    /**
+     * Read the configuration.
      *
      * @param _config Configuration to read.
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      */
-    public boolean RaadConfig(FileConfiguration _config)
+    public boolean ReadConfig(FileConfiguration _config, LoggerDispatcher _logger)
     {
         boolean bRet = true;
 
@@ -75,11 +85,8 @@ public class MaterialConfig
 
             if (m_mapMaterialManagers.containsKey(strMaterialType))
             {
-                if (m_plugin.isVerboseLogEnabled())
-                {
-                    m_plugin.getLogger().info("Reading material = " + strMaterialType);
-                }
-                bRet = ((IMaterialManager) m_mapMaterialManagers.get(strMaterialType)).readConfig(mapItems);
+                _logger.sendInfoMessage("Reading material = " + strMaterialType);
+                bRet = ((IMaterialManager) m_mapMaterialManagers.get(strMaterialType)).readConfig(mapItems, _logger);
                 if (!bRet)
                 {   // Configuration is not good
                     break;
@@ -87,7 +94,7 @@ public class MaterialConfig
             }
             else
             {
-                m_plugin.getLogger().severe("Unknown material type: " + strMaterialType);
+                _logger.sendErrorMessage("Unknown material type: " + strMaterialType);
                 bRet = false;
                 break;
             }
@@ -161,12 +168,13 @@ public class MaterialConfig
      * Display informations about material.
      *
      * @param _strMaterialType Type, like __CAMPFIRE__, __FIELD__, etc.
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      */
-    public void displayMaterials(String _strMaterialType)
+    public void displayMaterials(String _strMaterialType, LoggerDispatcher _logger)
     {
         if (m_mapMaterialManagers.containsKey(_strMaterialType))
         {   // If exists, display
-            ((IMaterialManager) m_mapMaterialManagers.get(_strMaterialType)).displayMaterials();
+            ((IMaterialManager) m_mapMaterialManagers.get(_strMaterialType)).displayMaterials(_logger);
         }
         else
         {   // If not exists, warn the user

@@ -100,10 +100,11 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
      * Read a piece of configuration about lectern.
      *
      * @param _mapItems Maps items Config to read.
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      * @return true if _mapItems is read without fatal error (but could be ignored), false else.
      */
     @Override
-    public boolean readConfig(Map<String, Object> _mapItems)
+    public boolean readConfig(Map<String, Object> _mapItems, LoggerDispatcher _logger)
     {
         boolean bRet = true;
         List<Material> listMaterial = null;
@@ -114,7 +115,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
         listMaterial = findMaterials("names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
-            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found no item!");
+            _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found no item!");
             // bRet = false; No, not a critical error, just ignore __LECTERN__ configuration
         }
         else
@@ -157,17 +158,17 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
             }
             if (lstPutMaterials.isEmpty() && lstRemoveMaterials.isEmpty())
             {   // Should have at least one of both
-                getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no material found for at least one of both put / remove, ignored!");
+                _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no material found for at least one of both put / remove, ignored!");
                 // bRet = false; No, not a critical error, just ignore __LECTERN__ configuration
             }
             lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
-                    (String strRegionName) -> { getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
-                    (String strRegionName) -> { getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
+                    (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
+                    (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
             );
             String strRemoveForbiddenMessage =  ChatColor.translateAlternateColorCodes('&', (String) _mapItems.get("remove_forbidden_message"));
             if (lstRegions.isEmpty())
             {
-                getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": no region found, ignored!");
+                _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no region found, ignored!");
             }
             else
             {   // All is OK, add it
@@ -185,7 +186,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                         String strKey = strRegionName + "_._" + material.name();
                         if (m_mapInformationsLecternMaterial.containsKey(strKey))
                         {
-                            getPlugin().getLogger().severe("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
+                            _logger.sendErrorMessage("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
                             bRet = false;
                             break;
                         }
@@ -204,13 +205,15 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
 
     /**
      * Display material available for this material type.
+     *
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      */
     @Override
-    public void displayMaterials()
+    public void displayMaterials(LoggerDispatcher _logger)
     {
-        getPlugin().getLogger().info("Display material for " + getMaterialType());
-        getPlugin().getLogger().info(Material.LECTERN.name() + " ==>" + Material.WRITABLE_BOOK.name());
-        getPlugin().getLogger().info(Material.LECTERN.name() + " ==>" + Material.WRITTEN_BOOK.name());
+        _logger.sendMessage("Display material for " + getMaterialType());
+        _logger.sendMessage(Material.LECTERN.name() + " ==>" + Material.WRITABLE_BOOK.name());
+        _logger.sendMessage(Material.LECTERN.name() + " ==>" + Material.WRITTEN_BOOK.name());
     }
 
     /**

@@ -78,7 +78,7 @@ public class WorldGuardInteractExt extends JavaPlugin
     @Override
     public void onEnable()
     {
-        if (readConfiguration(false))
+        if (readConfiguration(false, null))
         {
             if (isVerboseLogEnabled())
             {
@@ -107,9 +107,10 @@ public class WorldGuardInteractExt extends JavaPlugin
      * Read the plugin configuration.
      *
      * @param _bReloadConfig true to force reload config, false else.
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      * @return true if configuration is OK.
      */
-    private boolean readConfiguration(boolean _bReloadConfig)
+    private boolean readConfiguration(boolean _bReloadConfig, LoggerDispatcher _logger)
     {
         boolean bRet = false;
 
@@ -127,12 +128,10 @@ public class WorldGuardInteractExt extends JavaPlugin
             FileConfiguration config = getConfig();
             // Reading config
             m_bIsVerboseLogEnabled = config.getBoolean("enable_verbose_logs");
-            if (isVerboseLogEnabled())
-            {
-                getLogger().info("Reading configuration");
-            }
+            _logger.sendInfoMessage("Reading configuration");
+
             MaterialConfig materialConfig = new MaterialConfig(this);
-            if (materialConfig.RaadConfig(config))
+            if (materialConfig.ReadConfig(config, _logger))
             {
                 m_materialConfig = materialConfig;
                 m_interactionManager.setMaterialConfig(m_materialConfig);
@@ -141,8 +140,8 @@ public class WorldGuardInteractExt extends JavaPlugin
         }
         catch(Exception _ex)
         {
-            getLogger().severe("WorldGuardInteractExt::readConfiguration(), exception: " + _ex.getMessage());
-            getLogger().severe("Previous configuration is keep.");
+            _logger.sendErrorMessage("WorldGuardInteractExt::readConfiguration(), exception: " + _ex.getMessage());
+            _logger.sendErrorMessage("Previous configuration is keep.");
         }
 
         return bRet;
@@ -161,46 +160,68 @@ public class WorldGuardInteractExt extends JavaPlugin
     public boolean onCommand(CommandSender _sender, Command _command, String _strLabel, String[] _args)
     {
         boolean bRet = false;
+        LoggerDispatcher logger = new LoggerDispatcher(this, _sender);
 
-        if (_command.getName().equalsIgnoreCase("wgiextmaterials"))
+        if (_args.length == 0)
         {
-            if (!_sender.hasPermission("wgiext.materials"))
-            {
-                _sender.sendMessage(ChatColor.RED + "You don't have permission to execute this command!");
-            }
-            else if (_args.length != 1)
-            {
-                _sender.sendMessage(ChatColor.RED + "One and only one argument is needed for this command!");
-            }
-            else
-            {
-                m_materialConfig.displayMaterials(_args[0]);
-            }
+            logger.sendColoredMessage(ChatColor.BLUE,"Usage: /wgi <reload|materials>");
+            bRet = true;
         }
-        else if (_command.getName().equalsIgnoreCase("wgiextreload"))
+        else
         {
-            if (!_sender.hasPermission("wgiext.reload"))
+            String strSubCommand = _args[0].toLowerCase();
+
+            switch (strSubCommand)
             {
-                _sender.sendMessage(ChatColor.RED + "You don't have permission to execute this command!");
-            }
-            else if (_args.length != 0)
-            {
-                _sender.sendMessage(ChatColor.RED + "No argument needed for this command!");
-            }
-            else
-            {
-                // Reload configuration here
-                if (readConfiguration(true))
+                case "reload":
                 {
-                    _sender.sendMessage(ChatColor.GREEN + "WorldGuardInteractExt configuration reloaded successfully.");
+                    if (!_sender.hasPermission("wgiext.command.reload"))
+                    {
+                        logger.sendErrorMessage("You don't have permission to execute this command!");
+                    }
+                    else if (_args.length != 1)
+                    {
+                        logger.sendErrorMessage("No argument needed for this command!");
+                        logger.sendColoredMessage(ChatColor.BLUE,"Usage: /wgi reload");
+                    }
+                    else
+                    {
+                        // Reload configuration here
+                        if (readConfiguration(true, logger))
+                        {
+                            logger.sendColoredMessage(ChatColor.GREEN, "WorldGuardInteractExt configuration reloaded successfully.");
+                            bRet = true;
+                        }
+                        else
+                        {
+                            logger.sendErrorMessage("Error while reloading WorldGuardInteractExt configuration!");
+                        }
+                    }
                     bRet = true;
+                    break;
                 }
-                else
+                case "materials":
                 {
-                    _sender.sendMessage(ChatColor.RED + "Error while reloading WorldGuardInteractExt configuration!");
+                    if (!_sender.hasPermission("wgiext.command.materials"))
+                    {
+                        logger.sendErrorMessage("You don't have permission to execute this command!");
+                    }
+                    else if (_args.length != 2)
+                    {
+                        logger.sendErrorMessage("One and only one argument is needed for this command!");
+                        logger.sendColoredMessage(ChatColor.BLUE,"Usage: /wgi materials <material>");
+                        logger.sendColoredMessage(ChatColor.BLUE,"<material> : " + m_materialConfig.getAllMaterialsTypes());
+                    }
+                    else
+                    {
+                        m_materialConfig.displayMaterials(_args[1], logger);
+                    }
+                    bRet = true;
+                    break;
                 }
             }
         }
+
         return bRet;
     }
 }

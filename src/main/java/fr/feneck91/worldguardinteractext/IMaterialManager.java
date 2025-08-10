@@ -33,14 +33,17 @@ interface IMaterialManager
      * Read a piece of configuration.
      *
      * @param _mapItems Maps items Config to read.
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      * @return true if _mapItems is read without error, false else.
      */
-    boolean readConfig(Map<String, Object> _mapItems);
+    boolean readConfig(Map<String, Object> _mapItems, LoggerDispatcher _logger);
 
     /**
      * Display material available for this material type.
+     *
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      */
-    void displayMaterials();
+    void displayMaterials(LoggerDispatcher _logger);
 
     /**
      * Manage player interaction
