@@ -11,8 +11,6 @@ Where you are using WorldGuard, if you often use block-break to deny you will no
 If you let block-break to allow, you will able to do some action on these blocks but also break the blocks into the area.
 This is why this plugin was created, to add more interaction rules by disable temporary the WorldGuard rules for some interaction only.
 
-You can see the documentation [here](javadocs/index.html).
-
 # Versions history:
   - __1.0__ : 2025/08/08
     This first version allow to manage __camp fire__ :
