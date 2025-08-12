@@ -36,7 +36,7 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
     /**
      * Class that manage all informations about cauldron.
      */
-    private static class InformationsCauldronMaterial
+    private static class InformationCauldronMaterial
     {
         /**
          * List of allowed regions.
@@ -76,9 +76,9 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
     };
 
     /**
-     * List of map informations.
+     * List of map information.
      */
-    private Map<String, CauldronMaterialManager.InformationsCauldronMaterial> m_mapInformationsCauldronMaterial;
+    private final Map<String, InformationCauldronMaterial> m_mapInformationCauldronMaterial;
 
     /**
      * Constructor.
@@ -88,7 +88,7 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
     public CauldronMaterialManager(WorldGuardInteractExt _plugin)
     {
         super(_plugin);
-        m_mapInformationsCauldronMaterial = new HashMap<String, CauldronMaterialManager.InformationsCauldronMaterial>();
+        m_mapInformationCauldronMaterial = new HashMap<String, InformationCauldronMaterial>();
     }
 
     /**
@@ -232,7 +232,7 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
             }
             else
             {   // All is OK, add it
-                CauldronMaterialManager.InformationsCauldronMaterial infos = new CauldronMaterialManager.InformationsCauldronMaterial();
+                InformationCauldronMaterial infos = new InformationCauldronMaterial();
                 infos.m_lstMaterials                = new HashSet<>(listMaterial);
                 infos.m_lstFillMaterials            = lstFillMaterials;
                 infos.m_lstEmptyMaterials           = lstEmptyMaterials;
@@ -246,13 +246,13 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                     for (Material material : listMaterial)
                     {
                         String strKey = MakeKey(strWorldAndRegionName, material);
-                        if (m_mapInformationsCauldronMaterial.containsKey(strKey))
+                        if (m_mapInformationCauldronMaterial.containsKey(strKey))
                         {
                             _logger.sendErrorMessage("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strWorldAndRegionName + ")!");
                             bRet = false;
                             break;
                         }
-                        m_mapInformationsCauldronMaterial.put(strKey, infos);
+                        m_mapInformationCauldronMaterial.put(strKey, infos);
                     }
                     if (!bRet)
                     {
@@ -353,9 +353,9 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
         if (itemHand != null && bIsHandMaterialOk)
         {   // If nothing in hand, nothing to do
             String strKey = MakeKey(_world, _strCurrentPlayerRegionName, _block.getType());
-            if (m_mapInformationsCauldronMaterial.containsKey(strKey))
+            if (m_mapInformationCauldronMaterial.containsKey(strKey))
             {
-                CauldronMaterialManager.InformationsCauldronMaterial infosCauldron = m_mapInformationsCauldronMaterial.get(strKey);
+                InformationCauldronMaterial infosCauldron = m_mapInformationCauldronMaterial.get(strKey);
                 Component translatedForbiddenMessage = null;
 
                 // Check if _block (cauldron) is full or not

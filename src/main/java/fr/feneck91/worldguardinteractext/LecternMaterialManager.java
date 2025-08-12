@@ -10,7 +10,6 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.Lectern;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -33,9 +32,9 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
     public static final String MATERIAL_TYPE = "__LECTERN__";
 
     /**
-     * Class that manage all informations about lectern.
+     * Class that manage all information about lectern.
      */
-    private static class InformationsCauldronMaterial
+    private static class InformationCauldronMaterial
     {
         /**
          * List of allowed regions.
@@ -64,9 +63,9 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
     };
 
     /**
-     * List of map informations.
+     * List of map information.
      */
-    private Map<String, InformationsCauldronMaterial> m_mapInformationsLecternMaterial;
+    private Map<String, InformationCauldronMaterial> m_mapInformationLecternMaterial;
 
     /**
      * Constructor.
@@ -76,7 +75,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
     public LecternMaterialManager(WorldGuardInteractExt _plugin)
     {
         super(_plugin);
-        m_mapInformationsLecternMaterial = new HashMap<String, InformationsCauldronMaterial>();
+        m_mapInformationLecternMaterial = new HashMap<String, InformationCauldronMaterial>();
     }
 
     /**
@@ -190,7 +189,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
             }
             else
             {   // All is OK, add it
-                InformationsCauldronMaterial infos = new InformationsCauldronMaterial();
+                InformationCauldronMaterial infos = new InformationCauldronMaterial();
                 infos.m_lstMaterials                = new HashSet<>(listMaterial);
                 infos.m_lstPutMaterials             = lstPutMaterials;
                 infos.m_lstRemoveMaterials          = lstRemoveMaterials;
@@ -202,13 +201,13 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                     for (Material material : listMaterial)
                     {
                         String strKey = MakeKey(strWorldAndRegionName, material);
-                        if (m_mapInformationsLecternMaterial.containsKey(strKey))
+                        if (m_mapInformationLecternMaterial.containsKey(strKey))
                         {
                             _logger.sendErrorMessage("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strWorldAndRegionName + ")!");
                             bRet = false;
                             break;
                         }
-                        m_mapInformationsLecternMaterial.put(strKey, infos);
+                        m_mapInformationLecternMaterial.put(strKey, infos);
                     }
                     if (!bRet)
                     {
@@ -268,9 +267,9 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
         }
 
         String strKey = MakeKey(_world, _strCurrentPlayerRegionName, _block.getType());
-        if (m_mapInformationsLecternMaterial.containsKey(strKey))
+        if (m_mapInformationLecternMaterial.containsKey(strKey))
         {
-            InformationsCauldronMaterial infosLectern = m_mapInformationsLecternMaterial.get(strKey);
+            InformationCauldronMaterial infosLectern = m_mapInformationLecternMaterial.get(strKey);
             // Check if lectern is clicked
             if (_block.getType() == Material.LECTERN)
             {

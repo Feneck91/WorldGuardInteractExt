@@ -30,9 +30,9 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
     public static final String MATERIAL_TYPE = "__CAMPFIRE__";
 
     /**
-     * Class that manage all informations about campfire.
+     * Class that manage all information about campfire.
      */
-    private static class InformationsCampFireMaterial
+    private static class InformationCampFireMaterial
     {
         /**
          * List of allowed regions.
@@ -56,9 +56,9 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
     };
 
     /**
-     * List of map informations.
+     * List of map information.
      */
-    private Map<String, InformationsCampFireMaterial> m_mapInformationsCampFireMaterial;
+    private final Map<String, InformationCampFireMaterial> m_mapInformationCampFireMaterial;
 
     /**
      * Constructor.
@@ -68,7 +68,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
     public CampFireMaterialManager(WorldGuardInteractExt _plugin)
     {
         super(_plugin);
-        m_mapInformationsCampFireMaterial = new HashMap<String, InformationsCampFireMaterial>();
+        m_mapInformationCampFireMaterial = new HashMap<String, InformationCampFireMaterial>();
     }
 
     /**
@@ -185,7 +185,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     }
                     else
                     {   // All is OK, add it
-                        InformationsCampFireMaterial infos = new InformationsCampFireMaterial();
+                        InformationCampFireMaterial infos = new InformationCampFireMaterial();
                         infos.m_lstMaterials           = new HashSet<>(listMaterial);
                         infos.m_lstInflameMaterials    = listInflame;
                         infos.m_lstExtinguishMaterials = listExtinguish;
@@ -196,13 +196,13 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                             for (Material material : listMaterial)
                             {
                                 String strKey = MakeKey(strWorldAndRegionName, material);
-                                if (m_mapInformationsCampFireMaterial.containsKey(strKey))
+                                if (m_mapInformationCampFireMaterial.containsKey(strKey))
                                 {
                                     _logger.sendErrorMessage("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strWorldAndRegionName + ")!");
                                     bRet = false;
                                     break;
                                 }
-                                m_mapInformationsCampFireMaterial.put(strKey, infos);
+                                m_mapInformationCampFireMaterial.put(strKey, infos);
                             }
                             if (!bRet)
                             {
@@ -257,9 +257,9 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
         Player player = null;
 
         String strKey = MakeKey(_world, _strCurrentPlayerRegionName, _block.getType());
-        if (m_mapInformationsCampFireMaterial.containsKey(strKey))
+        if (m_mapInformationCampFireMaterial.containsKey(strKey))
         {
-            InformationsCampFireMaterial infosFire = m_mapInformationsCampFireMaterial.get(strKey);
+            InformationCampFireMaterial infosFire = m_mapInformationCampFireMaterial.get(strKey);
             // Here, we are sure, _block.getType() is Flammable
             if (_block.getBlockData() instanceof Lightable lightableBlockData)
             {
