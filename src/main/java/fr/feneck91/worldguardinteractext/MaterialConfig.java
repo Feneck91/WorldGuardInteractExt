@@ -47,6 +47,7 @@ public class MaterialConfig
         m_mapMaterialManagers = new HashMap<String, IMaterialManager>();
         m_mapMaterialManagers.put(CampFireMaterialManager.MATERIAL_TYPE, new CampFireMaterialManager(_plugin));
         m_mapMaterialManagers.put(LecternMaterialManager.MATERIAL_TYPE, new LecternMaterialManager(_plugin));
+        m_mapMaterialManagers.put(CauldronMaterialManager.MATERIAL_TYPE, new CauldronMaterialManager(_plugin));
     }
 
     /**

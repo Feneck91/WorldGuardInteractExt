@@ -1,5 +1,6 @@
 package fr.feneck91.worldguardinteractext;
 
+import com.sk89q.worldedit.util.formatting.text.format.TextColor;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
@@ -65,7 +66,7 @@ public class LoggerDispatcher
     {
         if (m_commandSender != null)
         {
-            m_commandSender.sendMessage("§g" + _strMessage);
+            m_commandSender.sendMessage(ChatColor.WHITE + _strMessage);
         }
         else if (isVerboseLogEnabled())
         {
@@ -85,7 +86,7 @@ public class LoggerDispatcher
     {
         if (m_commandSender != null)
         {
-            m_commandSender.sendMessage("§6" + _strMessage);
+            m_commandSender.sendMessage(TextColor.GOLD + _strMessage);
         }
         else
         {
@@ -125,7 +126,7 @@ public class LoggerDispatcher
     {
         if (m_commandSender != null)
         {
-            m_commandSender.sendMessage("§g" + _strMessage);
+            m_commandSender.sendMessage(ChatColor.WHITE + _strMessage);
         }
         else
         {

@@ -1,6 +1,10 @@
 package fr.feneck91.worldguardinteractext;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldedit.util.formatting.text.Component;
+import com.sk89q.worldedit.util.formatting.text.ComponentBuilder;
+import com.sk89q.worldedit.util.formatting.text.TextComponent;
+import com.sk89q.worldedit.util.formatting.text.format.TextColor;
 import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
@@ -8,6 +12,7 @@ import com.sk89q.worldguard.protection.regions.RegionContainer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -341,7 +346,7 @@ public abstract class AMaterialManager  implements IMaterialManager
      * @param _lambdaInfoInvalid Lambda to display log that this region is not added (but should be because it is into the list).
      * @return A regions list names.
      */
-    protected Set<String> findRegions(ArrayList<String> _listRegionsNames, Consumer<String> _lambdaInfoAdd, Consumer<String> _lambdaInfoInvalid)
+    protected Set<String> findRegions(List<String> _listRegionsNames, Consumer<String> _lambdaInfoAdd, Consumer<String> _lambdaInfoInvalid)
     {
         HashSet<String> listRegions = new HashSet<String>();
 
@@ -444,5 +449,191 @@ public abstract class AMaterialManager  implements IMaterialManager
         }
 
         return mapRegions;
+    }
+
+    /**
+     * Make the keys for all material managers with world name.
+     *
+     * @param _world WorldGuard World name.
+     * @param _strRegionName WorldGuard Region name.
+     * @param _material Used material, must be not null.
+     * @return The formatted key.
+     */
+    protected static String MakeKey(World _world, String _strRegionName, Material _material)
+    {
+        return MakeKey(_world.getName() + "." + _strRegionName, _material);
+    }
+
+    /**
+     * Make the keys for all material managers with world name and region.
+     *
+     * @param _strWorldAndRegionName WorldGuard World name with region name.
+     * @param _material Used material, must be not null.
+     * @return The formatted key.
+     */
+    protected static String MakeKey(String _strWorldAndRegionName, Material _material)
+    {
+        return _strWorldAndRegionName + ".__." + _material.name();
+    }
+
+    /**
+     * Transform a string with placeholders to WorldEdit Component.
+     * <p>
+     * Replace each placeholder to a Component passed into parameter and apply a color based on legacy codes (§).
+     * </p>
+     *
+     * @param _strTemplateText Text template with colors, ex: "§cFill the &lt;cauldron&gt; with &lt;material&gt; is forbidden."
+     * @param _mapPlaceholders Placeholders map, ex: "cauldron" -&gt; TranslatableComponent.of(_block.getTranslationKey()).
+     * @return Component WorldEdit message ready to send.
+     */
+    public static Component formatPlaceHolders(String _strTemplateText, Map<String, Component> _mapPlaceholders)
+    {
+        List<Component> lstComponents = new ArrayList<>();
+
+        TextColor currentColor = null;
+
+        StringBuilder sb = new StringBuilder();
+        int iPos = 0;
+        int iLength = _strTemplateText.length();
+
+        while (iPos < iLength)
+        {
+            char c = _strTemplateText.charAt(iPos);
+
+            if (c == '§' && iPos + 1 < iLength)
+            {
+                if (!sb.isEmpty())
+                {
+                    lstComponents.add(colorizeText(sb.toString(), currentColor));
+                    sb = new StringBuilder();
+                }
+                currentColor = fromLegacyColorCode(_strTemplateText.charAt(iPos + 1));
+                iPos += 2;
+                continue;
+            }
+            else if (c == '<')
+            {
+                if (!sb.isEmpty())
+                {
+                    lstComponents.add(colorizeText(sb.toString(), currentColor));
+                    sb = new StringBuilder();
+                }
+
+                int iEndPlaceholder = _strTemplateText.indexOf('>', iPos);
+                if (iEndPlaceholder == -1)
+                {
+                    sb.append(_strTemplateText.substring(iPos));
+                    break;
+                }
+
+                String strKey = _strTemplateText.substring(iPos + 1, iEndPlaceholder);
+                Component compReplacement = _mapPlaceholders.get(strKey);
+
+                if (compReplacement != null)
+                {
+                    if (currentColor != null)
+                    {
+                        compReplacement = compReplacement.color(currentColor);
+                    }
+                    lstComponents.add(compReplacement);
+                }
+                else
+                {
+                    lstComponents.add(colorizeText("<" + strKey + ">", currentColor));
+                }
+
+                iPos = iEndPlaceholder + 1;
+                continue;
+            }
+            else
+            {
+                sb.append(c);
+                iPos++;
+            }
+        }
+
+        if (!sb.isEmpty())
+        {
+            lstComponents.add(colorizeText(sb.toString(), currentColor));
+        }
+
+        Component result = TextComponent.of("");
+
+        for (Component comp : lstComponents)
+        {
+            result = result.append(comp);
+        }
+
+        return result;
+    }
+
+    /**
+     * Make a colorized component string from a string.
+     *
+     * @param _strText Input string to colorized.
+     * @param _colorText Color to use.
+     * @return A colorized Component.
+     */
+    private static Component colorizeText(String _strText, TextColor _colorText)
+    {
+        TextComponent retComponent;
+        if (_strText.isEmpty())
+        {
+            retComponent = TextComponent.of("");
+        }
+        else
+        {
+            retComponent = TextComponent.of(_strText);
+            if (_colorText != null)
+            {
+                retComponent = retComponent.color(_colorText);
+            }
+        }
+
+        return retComponent;
+    }
+
+    /**
+     * Get text color from char.
+     *
+     * @param _cCode Char code.
+     * @return A text color that ce input char represent.
+     */
+    private static TextColor fromLegacyColorCode(char _cCode)
+    {
+        return switch (Character.toLowerCase(_cCode))
+        {
+            case '0' -> TextColor.BLACK;
+            case '1' -> TextColor.DARK_BLUE;
+            case '2' -> TextColor.DARK_GREEN;
+            case '3' -> TextColor.DARK_AQUA;
+            case '4' -> TextColor.DARK_RED;
+            case '5' -> TextColor.DARK_PURPLE;
+            case '6' -> TextColor.GOLD;
+            case '7' -> TextColor.GRAY;
+            case '8' -> TextColor.DARK_GRAY;
+            case '9' -> TextColor.BLUE;
+            case 'a' -> TextColor.GREEN;
+            case 'b' -> TextColor.AQUA;
+            case 'c' -> TextColor.RED;
+            case 'd' -> TextColor.LIGHT_PURPLE;
+            case 'e' -> TextColor.YELLOW;
+            case 'f' -> TextColor.WHITE;
+            default -> TextColor.WHITE;
+        };
+    }
+
+    /**
+     * Pad a string to the right with space.
+     *
+     * @param _strText Input texte.
+     * @param iLength Full string size wanted.
+     * @return A padded string.
+     */
+    public static String padRight(String _strText, int iLength)
+    {
+        return (_strText.length() >= iLength)
+            ?  _strText
+            : _strText + " ".repeat(iLength - _strText.length());
     }
 }

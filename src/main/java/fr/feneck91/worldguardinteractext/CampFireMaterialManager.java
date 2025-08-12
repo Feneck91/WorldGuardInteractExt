@@ -109,8 +109,24 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
         List<Material> listMaterial = null;
         List<MaterialInformation> listInflame = new ArrayList<MaterialInformation>();
         List<MaterialInformation> listExtinguish = new ArrayList<MaterialInformation>();
-        Set<String> lstRegions;
 
+        // Get regions list
+        Set<String> lstRegions = null;
+        if (_mapItems.get("regions") instanceof List<?> listRegions)
+        {
+            List<String> regions = new ArrayList<>();
+            for (Object o : (List<?>) listRegions)
+            {
+                if (o instanceof String strRegion)
+                {
+                    regions.add(strRegion);
+                }
+            }
+            lstRegions = findRegions(regions,
+                    (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
+                    (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
+            );
+        }
         listMaterial = findMaterials("names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
@@ -164,10 +180,6 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                 }
                 else
                 {
-                    lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
-                                             (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
-                                             (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
-                                            );
                     if (lstRegions.isEmpty())
                     {
                         _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no region found, ignored!");
@@ -180,14 +192,14 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                         infos.m_lstExtinguishMaterials = listExtinguish;
                         infos.m_lstRegions             = lstRegions;
                         // To optimize time search in events, combine world name with material
-                        for (String strRegionName : lstRegions)
+                        for (String strWorldAndRegionName : lstRegions)
                         {
                             for (Material material : listMaterial)
                             {
-                                String strKey = strRegionName + "_._" + material.name();
+                                String strKey = MakeKey(strWorldAndRegionName, material);
                                 if (m_mapInformationsCampFireMaterial.containsKey(strKey))
                                 {
-                                    _logger.sendErrorMessage("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
+                                    _logger.sendErrorMessage("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strWorldAndRegionName + ")!");
                                     bRet = false;
                                     break;
                                 }
@@ -245,10 +257,10 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
         InteractEventManager.InteractEventsInfos interactEventsInfos = null;
         Player player = null;
 
-        String key = _world.getName() + "." + _strCurrentPlayerRegionName + "_._" + _block.getBlockData().getMaterial().name();
-        if (m_mapInformationsCampFireMaterial.containsKey(key))
+        String strKey = MakeKey(_world, _strCurrentPlayerRegionName, _block.getType());
+        if (m_mapInformationsCampFireMaterial.containsKey(strKey))
         {
-            InformationsCampFireMaterial infosFire = m_mapInformationsCampFireMaterial.get(key);
+            InformationsCampFireMaterial infosFire = m_mapInformationsCampFireMaterial.get(strKey);
             // Here, we are sure, _block.getType() is Flammable
             if (_block.getBlockData() instanceof Lightable lightableBlockData)
             {

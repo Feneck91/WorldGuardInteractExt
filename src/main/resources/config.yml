@@ -63,5 +63,30 @@ items:
       # Message to the user if he try to remove a book from Lectern and this action is forbidden (WorldGuard don't display message)
       # See colors codes: https://minecraft.wiki/w/Formatting_codes
       remove_forbidden_message: "&eYou cannot remove this book!"
+    },
+    {
+      # Specify type of extended interection: here it is lectern
+      type: "__CAULDRON__",
+      # name : must be only CAUDRON / LAVA_CAULDRON / WATER_CAULDRON / POWDER_SNOW_CAULDRON
+      names: ["CAULDRON", "LAVA_CAULDRON", "WATER_CAULDRON", "POWDER_SNOW_CAULDRON"],
+      # Region : you MUST add world name before region name to make it work
+      # Put  [] to accept all regions
+      # regions: ["myworld.region_1", "myworld.region_2"],
+      regions: [], # All regions
+      # To fill cauldron, use only LAVA_BUCKET, WATER_BUCKET, POWDER_SNOW_BUCKET, POTION)
+      # For POTION only potion with water could be used (and so not empty) to fill cauldron,
+      #    the rule is : if cauldron is empty, allow to fill cauldron, else the cauldron must contains water.
+      # If empty, search all material. If no material remove this entry (not allowed to fill cauldron).
+      fill: [ "LAVA_BUCKET", "WATER_BUCKET", "POWDER_SNOW_BUCKET", "POTION" ],
+      # To empty cauldron, use only BUCKET / GLASS_BOTTLE.
+      # On cauldron, the GLASS_BOTTLE can only take water, the BUCKET can take lava, water, powder snow
+      # Taking water from a cauldron that is not completely filled is also not possible.
+      # If empty, search all material. If no material remove this entry (not allowed to empty cauldron).
+      empty: ["BUCKET", "GLASS_BOTTLE"],
+      # If action is not allowed, the plugin can do nothing and let WorldGuard do the job,
+      # or force action to be cancelled and display a forbidden message.
+      force_forbidden: true,
+      fill_forbidden_message: "&eYou cannot fill this <cauldron> with <material>!",
+      empty_forbidden_message: "&eYou cannot empty this <cauldron> with <material>!",
     }
   ]

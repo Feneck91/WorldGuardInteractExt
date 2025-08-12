@@ -29,7 +29,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
     /**
      * Class that manage all informations about lectern.
      */
-    private static class InformationsLecternMaterial
+    private static class InformationsCauldronMaterial
     {
         /**
          * List of allowed regions.
@@ -52,7 +52,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
         public List<MaterialInformation> m_lstRemoveMaterials;
 
         /**
-         * Message displayed to the user if he has not permission to remove the book from lectern.
+         * Message displayed to the user if he has no permissions to remove the book from lectern.
          */
         public String m_strRemoveForbiddenMessage;
     };
@@ -60,7 +60,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
     /**
      * List of map informations.
      */
-    private Map<String, LecternMaterialManager.InformationsLecternMaterial> m_mapInformationsLecternMaterial;
+    private Map<String, InformationsCauldronMaterial> m_mapInformationsLecternMaterial;
 
     /**
      * Constructor.
@@ -70,7 +70,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
     public LecternMaterialManager(WorldGuardInteractExt _plugin)
     {
         super(_plugin);
-        m_mapInformationsLecternMaterial = new HashMap<String, LecternMaterialManager.InformationsLecternMaterial>();
+        m_mapInformationsLecternMaterial = new HashMap<String, InformationsCauldronMaterial>();
     }
 
     /**
@@ -110,8 +110,24 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
         List<Material> listMaterial = null;
         List<MaterialInformation> lstPutMaterials = new ArrayList<MaterialInformation>();
         List<MaterialInformation> lstRemoveMaterials = new ArrayList<MaterialInformation>();
-        Set<String> lstRegions;
 
+        // Get regions list
+        Set<String> lstRegions = null;
+        if (_mapItems.get("regions") instanceof List<?> listRegions)
+        {
+            List<String> regions = new ArrayList<>();
+            for (Object o : (List<?>) listRegions)
+            {
+                if (o instanceof String strRegion)
+                {
+                    regions.add(strRegion);
+                }
+            }
+            lstRegions = findRegions(regions,
+                    (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
+                    (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
+            );
+        }
         listMaterial = findMaterials("names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
@@ -161,32 +177,28 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                 _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no material found for at least one of both put / remove, ignored!");
                 // bRet = false; No, not a critical error, just ignore __LECTERN__ configuration
             }
-            lstRegions = findRegions((ArrayList<String>) _mapItems.get("regions"),
-                    (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
-                    (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
-            );
             String strRemoveForbiddenMessage =  ChatColor.translateAlternateColorCodes('&', (String) _mapItems.get("remove_forbidden_message"));
-            if (lstRegions.isEmpty())
+            if (lstRegions == null || lstRegions.isEmpty())
             {
                 _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no region found, ignored!");
             }
             else
             {   // All is OK, add it
-                LecternMaterialManager.InformationsLecternMaterial infos = new LecternMaterialManager.InformationsLecternMaterial();
+                InformationsCauldronMaterial infos = new InformationsCauldronMaterial();
                 infos.m_lstMaterials                = new HashSet<>(listMaterial);
                 infos.m_lstPutMaterials             = lstPutMaterials;
                 infos.m_lstRemoveMaterials          = lstRemoveMaterials;
                 infos.m_lstRegions                  = lstRegions;
                 infos.m_strRemoveForbiddenMessage   = strRemoveForbiddenMessage;
                 // To optimize time search, combine world name with material
-                for (String strRegionName : lstRegions)
+                for (String strWorldAndRegionName : lstRegions)
                 {
                     for (Material material : listMaterial)
                     {
-                        String strKey = strRegionName + "_._" + material.name();
+                        String strKey = MakeKey(strWorldAndRegionName, material);
                         if (m_mapInformationsLecternMaterial.containsKey(strKey))
                         {
-                            _logger.sendErrorMessage("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strRegionName + ")!");
+                            _logger.sendErrorMessage("Configuration " + getMaterialType() + " failed to load: more than one material (" + material.name() + ") used for same world / region (" + strWorldAndRegionName + ")!");
                             bRet = false;
                             break;
                         }
@@ -233,26 +245,26 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
         ItemStack itemHand;
         Player player = null;
 
-        if (_event instanceof PlayerTakeLecternBookEvent playerTakeLecternBookEvent)
+        if (_event instanceof PlayerInteractEvent playerInteractEvent)
+        {
+            itemHand =  playerInteractEvent.getItem();
+            player = playerInteractEvent.getPlayer();
+        }
+        else if (_event instanceof PlayerTakeLecternBookEvent playerTakeLecternBookEvent)
         {
             itemHand = null;   // Used when player remove item from Lectern
             lecternBookToRemove = playerTakeLecternBookEvent.getBook();
             player = playerTakeLecternBookEvent.getPlayer();
-        }
-        else  if (_event instanceof PlayerInteractEvent playerInteractEvent)
-        {
-            itemHand =  playerInteractEvent.getItem();
-            player = playerInteractEvent.getPlayer();
         }
         else
         {
             itemHand = null;
         }
 
-        String key = _world.getName() + "." + _strCurrentPlayerRegionName + "_._" + _block.getType().name();
-        if (m_mapInformationsLecternMaterial.containsKey(key))
+        String strKey = MakeKey(_world, _strCurrentPlayerRegionName, _block.getType());
+        if (m_mapInformationsLecternMaterial.containsKey(strKey))
         {
-            LecternMaterialManager.InformationsLecternMaterial infosLectern = m_mapInformationsLecternMaterial.get(key);
+            InformationsCauldronMaterial infosLectern = m_mapInformationsLecternMaterial.get(strKey);
             // Check if lectern is clicked
             if (_block.getType() == Material.LECTERN)
             {
