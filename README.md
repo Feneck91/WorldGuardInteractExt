@@ -24,6 +24,14 @@ This is why this plugin was created, to add more interaction rules by disable te
     Extended informations has been added for items book and shovel allowing to check items meta. 
     Camp fire allow to add extended informations for shovel as name / lore to better specify wich tools
     can extinguish fire.
+  - __3.0__ : 2025/08/12
+    This version allow to manage __cauldron__ : 
+      - Choose cauldron type to manage.
+      - Choose items that can fill or empty cauldron.
+      - Allow to forbidden interaction with cauldron or let WorldGuard do the job with its with own flags.
+      - Allow to display messages to player when interaction is forbidden (fill / empty).
+    Bugs fixes: fix logger for command.
+    Allow to use place holder to display material / bloc to the user into message (explanation into config.yaml).
 
 # The configuration file (config.yaml):
 ```yaml
@@ -91,7 +99,37 @@ items:
       remove: ["WRITABLE_BOOK", "WRITTEN_BOOK"],
       # Message to the user if he try to remove a book from Lectern and this action is forbidden (WorldGuard don't display message)
       # See colors codes: https://minecraft.wiki/w/Formatting_codes
-      remove_forbidden_message: "&eYou cannot remove this book!"
+      # Allow to use <lectern> for the lectern name (automatically translated).
+      # Allow to use <removed_book> for the name of the book in the lectern that the player want to remove (automatically translated).
+      remove_forbidden_message: "&eYou cannot remove <removed_book> from the <lectern>!"
+    },
+    {
+      # Specify type of extended interection: here it is lectern
+      type: "__CAULDRON__",
+      # name : must be only CAUDRON / LAVA_CAULDRON / WATER_CAULDRON / POWDER_SNOW_CAULDRON
+      names: ["CAULDRON", "LAVA_CAULDRON", "WATER_CAULDRON", "POWDER_SNOW_CAULDRON"],
+      # Region : you MUST add world name before region name to make it work
+      # Put  [] to accept all regions
+      # regions: ["myworld.region_1", "myworld.region_2"],
+      regions: [], # All regions
+      # To fill cauldron, use only LAVA_BUCKET, WATER_BUCKET, POWDER_SNOW_BUCKET, POTION)
+      # For POTION only potion with water could be used (and so not empty) to fill cauldron,
+      #    the rule is : if cauldron is empty, allow to fill cauldron, else the cauldron must contains water.
+      # If empty, search all material. If no material remove this entry (not allowed to fill cauldron).
+      fill: [ "LAVA_BUCKET", "WATER_BUCKET", "POWDER_SNOW_BUCKET", "POTION" ],
+      # To empty cauldron, use only BUCKET / GLASS_BOTTLE.
+      # On cauldron, the GLASS_BOTTLE can only take water, the BUCKET can take lava, water, powder snow
+      # Taking water from a cauldron that is not completely filled is also not possible.
+      # If empty, search all material. If no material remove this entry (not allowed to empty cauldron).
+      empty: ["BUCKET", "GLASS_BOTTLE"],
+      # force_forbidden = false: If action is not allowed, the plugin do nothing and let WorldGuard do the job
+      #                          with its with own flags,
+      # force_forbidden = true: If action is not allowed, the action is cancelled and a forbidden message is displayed.
+      force_forbidden: true,
+      # Allow to use <cauldron> for the cauldron name (automatically translated).
+      # Allow to use <hand_material> for the name of the item in the player's hand (automatically translated).
+      fill_forbidden_message: "&eYou cannot fill this <cauldron> with <hand_material>!",
+      empty_forbidden_message: "&eYou cannot empty this <cauldron> with <hand_material>!",
     }
   ]
 ```
