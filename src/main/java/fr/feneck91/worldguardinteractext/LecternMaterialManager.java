@@ -1,5 +1,7 @@
 package fr.feneck91.worldguardinteractext;
 
+import com.sk89q.worldedit.util.formatting.text.Component;
+import com.sk89q.worldedit.util.formatting.text.TranslatableComponent;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -271,12 +273,10 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                 ItemStack itemInLecternToTest;
                 List<MaterialInformation> listToTest = null;
                 boolean bCbeckAllowed = true;
-                boolean bInvertCondition = false;
                 if (lecternBookToRemove != null)
                 {   // When remove book from lectern
                     itemInLecternToTest = lecternBookToRemove;
                     listToTest = infosLectern.m_lstRemoveMaterials;
-                    bInvertCondition = true;
                 }
                 else if (itemHand != null)
                 {   // When put book to lectern (itemHand MUST NOT BE null)
@@ -330,11 +330,16 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                         return bRet;
                     });
 
-                    if ((bAllowed && !bInvertCondition) || (!bAllowed && bInvertCondition))
+                    if (bAllowed == (lecternBookToRemove == null)) // (bAllowed && lecternBookToRemove == null) || (!bAllowed && lecternBookToRemove != null)
                     {
                         interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
                         if (lecternBookToRemove != null)
                         {   // Remove book on lectern
+                            Map<String, Component> placeholders = Map.of(
+                            "lectern", TranslatableComponent.of(_block.getTranslationKey()),
+                            "removed_book", TranslatableComponent.of(lecternBookToRemove.getType().getTranslationKey())
+                            );
+                            Component translatedForbiddenMessage = formatPlaceHolders(infosLectern.m_strRemoveForbiddenMessage, placeholders);
                             interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerTakeLecternBookEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel,
                                 (event) ->
                                 {
