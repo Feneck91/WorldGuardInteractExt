@@ -11,6 +11,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Levelled;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -19,6 +20,7 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.potion.PotionType;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -350,6 +352,8 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
             if (m_mapInformationsCauldronMaterial.containsKey(strKey))
             {
                 CauldronMaterialManager.InformationsCauldronMaterial infosCauldron = m_mapInformationsCauldronMaterial.get(strKey);
+                Component translatedForbiddenMessage = null;
+
                 // Check if _block (cauldron) is full or not
                 boolean bIsCauldronIsFull = false;
                 BlockData blocData = _block.getBlockData();
@@ -377,11 +381,9 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                         {
                             Map<String, Component> placeholders = Map.of(
                             "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
-                            "material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
+                            "hand_material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
                             );
-                            Component message = formatPlaceHolders(infosCauldron.m_strFillForbiddenMessage, placeholders);
-                            BukkitPlayer bukkitPlayer = BukkitAdapter.adapt(player);
-                            bukkitPlayer.print(message);
+                            translatedForbiddenMessage = formatPlaceHolders(infosCauldron.m_strFillForbiddenMessage, placeholders);
                         }
                     }
                 }
@@ -402,11 +404,9 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                         {
                             Map<String, Component> placeholders = Map.of(
                             "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
-                            "material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
+                            "hand_material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
                             );
-                            Component message = formatPlaceHolders(infosCauldron.m_strFillForbiddenMessage, placeholders);
-                            BukkitPlayer bukkitPlayer = BukkitAdapter.adapt(player);
-                            bukkitPlayer.print(message);
+                            translatedForbiddenMessage = formatPlaceHolders(infosCauldron.m_strFillForbiddenMessage, placeholders);
                         }
                     }
                 }
@@ -433,19 +433,33 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                         {
                             Map<String, Component> placeholders = Map.of(
                             "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
-                            "material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
+                            "hand_material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
                             );
-                            Component message = formatPlaceHolders(infosCauldron.m_strEmptyForbiddenMessage, placeholders);
-                            BukkitPlayer bukkitPlayer = BukkitAdapter.adapt(player);
-                            bukkitPlayer.print(message);
+                            translatedForbiddenMessage = formatPlaceHolders(infosCauldron.m_strEmptyForbiddenMessage, placeholders);
                         }
                     }
                 }
                 if (bIsEventAllowed || bIsEventForbidden)
-                {   // Allow event
+                {   // Allow / Forbidden event
+                    Consumer<Event> _lambdaActionEventForbidden = null; // Event to call if event is forbidden at the last event
+                    if (translatedForbiddenMessage != null)
+                    {
+                        BukkitPlayer bukkitPlayer = BukkitAdapter.adapt(player);
+                        Component compMessage = translatedForbiddenMessage;
+                        _lambdaActionEventForbidden = (_lambdaEvent) ->
+                        {
+                            if (_lambdaEvent instanceof Cancellable event)
+                            {
+                                if (event.isCancelled())
+                                {   // Only if another plugin has not uncancelled the event
+                                    bukkitPlayer.print(compMessage);
+                                }
+                            }
+                        };
+                    }
                     interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
                     interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
-                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, bIsEventForbidden ? InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore : InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, bIsEventForbidden ? InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore : InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, _lambdaActionEventForbidden));
                 }
             }
         }

@@ -480,6 +480,7 @@ public abstract class AMaterialManager  implements IMaterialManager
      * Transform a string with placeholders to WorldEdit Component.
      * <p>
      * Replace each placeholder to a Component passed into parameter and apply a color based on legacy codes (§).
+     * Used to be able to crete message with translated strings.
      * </p>
      *
      * @param _strTemplateText Text template with colors, ex: "§cFill the &lt;cauldron&gt; with &lt;material&gt; is forbidden."
