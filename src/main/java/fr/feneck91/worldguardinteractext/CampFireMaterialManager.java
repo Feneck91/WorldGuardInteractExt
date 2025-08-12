@@ -121,12 +121,12 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     regions.add(strRegion);
                 }
             }
-            lstRegions = findRegions(regions,
+            lstRegions = findRegions(_logger, regions,
                     (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
                     (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
             );
         }
-        listMaterial = findMaterials("names", _mapItems, this::isMaterialValidForType);
+        listMaterial = findMaterials(_logger,"names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
             _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found no item!");
@@ -168,9 +168,9 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     };
 
             // Read inflame
-            if (   readMaterial("inflame", _mapItems, listInflame, true, lambdaCheckIsValid)
+            if (   readMaterial(_logger, "inflame", _mapItems, listInflame, true, lambdaCheckIsValid)
                    // Read extinguish
-                && readMaterial("extinguish", _mapItems, listExtinguish, true, lambdaCheckIsValid))
+                && readMaterial(_logger, "extinguish", _mapItems, listExtinguish, true, lambdaCheckIsValid))
             {
                 if (listInflame.isEmpty() && listExtinguish.isEmpty())
                 {   // Should have at least one of both

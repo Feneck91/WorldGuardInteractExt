@@ -130,6 +130,7 @@ public abstract class AMaterialManager  implements IMaterialManager
     /**
      * Read material with extra informations.
      *
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      * @param _strKeyName Key name to retrieve the list of materials informations (name / regex and extra informations).
      * @param _mapItems Map where to find informations.
      * @param _lstMaterialsInformation Materials information list to fill.
@@ -139,19 +140,19 @@ public abstract class AMaterialManager  implements IMaterialManager
      *                                          If null all is allowed.
      * @return true if no error, false else.
      */
-    protected boolean readMaterial(String _strKeyName, Map<String, Object> _mapItems, List<MaterialInformation> _lstMaterialsInformation, boolean _bIsEmptyAllowed, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid)
+    protected boolean readMaterial(LoggerDispatcher _logger, String _strKeyName, Map<String, Object> _mapItems, List<MaterialInformation> _lstMaterialsInformation, boolean _bIsEmptyAllowed, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid)
     {
         boolean bRet = true;
         if (_mapItems.containsKey(_strKeyName))
         {
-            List<MaterialInformation> lstMaterialsInformation = findMaterialsWithProperties(_strKeyName, _mapItems, _lambdaIsMaterialInformationValid,
+            List<MaterialInformation> lstMaterialsInformation = findMaterialsWithProperties(_logger, _strKeyName, _mapItems, _lambdaIsMaterialInformationValid,
                 (MaterialInformation materialInformation) ->
                     {
-                        getPlugin().getLogger().info("Configuration " + getMaterialType() + ": add " + _strKeyName + ": " + materialInformation.toString());
+                        _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add " + _strKeyName + ": " + materialInformation.toString());
                     },
                 (MaterialInformation materialInformation) ->
                     {
-                        getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": found '" + materialInformation.toString() + "' that is not valid to " + _strKeyName + "material ignored. ");
+                        _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + materialInformation.toString() + "' that is not valid to " + _strKeyName + "material ignored. ");
                     }
             );
             if (lstMaterialsInformation != null)
@@ -174,16 +175,17 @@ public abstract class AMaterialManager  implements IMaterialManager
     /**
      * Get a list of materials from a _listMaterialNames.
      *
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      * @param _strKeyName Key name to retrieve the list of materials informations (name / regex and extra informations).
      * @param _mapItems Map where to find informations.
      * @param _lambdaIsMaterialValid Lambda to check if the material is valid for this search.
      * @return An allowed material list.
      */
-    protected List<Material> findMaterials(String _strKeyName, Map<String, Object> _mapItems, Function<Material, Boolean> _lambdaIsMaterialValid)
+    protected List<Material> findMaterials(LoggerDispatcher _logger, String _strKeyName, Map<String, Object> _mapItems, Function<Material, Boolean> _lambdaIsMaterialValid)
     {
         List<Material> listMaterials = new ArrayList<Material>();
         List<MaterialInformation> lstMaterialsInformation = new ArrayList<MaterialInformation>();
-        if (readMaterial(_strKeyName, _mapItems, lstMaterialsInformation, false, (MaterialInformation itemMaterialInformation) ->
+        if (readMaterial(_logger, _strKeyName, _mapItems, lstMaterialsInformation, false, (MaterialInformation itemMaterialInformation) ->
             {
                 return    itemMaterialInformation != null
                        && itemMaterialInformation.getMaterial() != null
@@ -202,6 +204,7 @@ public abstract class AMaterialManager  implements IMaterialManager
     /**
      * Get a list of materials from a name.
      *
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
      * @param _strKeyName Key name to retrieve the list of materials information (name / regex and extra information).
      * @param _mapItems Map where to find information.
      * @param _lambdaIsMaterialInformationValid Lambda to check if the material information is valid for this search.
@@ -210,7 +213,7 @@ public abstract class AMaterialManager  implements IMaterialManager
      * @param _lambdaInfoInvalid Lambda to display log that this material is not added (but should be).
      * @return An allowed material information list.
      */
-    private List<MaterialInformation> findMaterialsWithProperties(String _strKeyName, Map<String, Object> _mapItems, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid, Consumer<MaterialInformation> _lambdaInfoAdd, Consumer<MaterialInformation> _lambdaInfoInvalid)
+    private List<MaterialInformation> findMaterialsWithProperties(LoggerDispatcher _logger, String _strKeyName, Map<String, Object> _mapItems, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid, Consumer<MaterialInformation> _lambdaInfoAdd, Consumer<MaterialInformation> _lambdaInfoInvalid)
     {
         ArrayList<Object> listMaterialInformations = (ArrayList<Object>) _mapItems.get(_strKeyName);
         List<MaterialInformation> listMaterialsInformations = new ArrayList<MaterialInformation>();
@@ -225,7 +228,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                 if (_lambdaIsMaterialInformationValid == null || _lambdaIsMaterialInformationValid.apply(materialInformation))
                 {
                     listMaterialsInformations.add(materialInformation);
-                    if (getPlugin().isVerboseLogEnabled() && _lambdaInfoAdd != null)
+                    if (_logger.isVerboseLogEnabled() && _lambdaInfoAdd != null)
                     {
                         _lambdaInfoAdd.accept(materialInformation);
                     }
@@ -265,28 +268,28 @@ public abstract class AMaterialManager  implements IMaterialManager
                                     }
                                     else
                                     {
-                                        getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": more than one key '" + entryProperties.getKey() +"' is filled, only first is keep!");
+                                        _logger.sendWarningMessage("Configuration " + getMaterialType() + ": more than one key '" + entryProperties.getKey() +"' is filled, only first is keep!");
                                     }
                                 }
                             }
                         }
                         else
                         {
-                            getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": bad configuration for key '" +  _strKeyName + "', subkey 'material' is mandatory for dictionary informations, configuration is ignored!");
+                            _logger.sendWarningMessage("Configuration " + getMaterialType() + ": bad configuration for key '" +  _strKeyName + "', subkey 'material' is mandatory for dictionary informations, configuration is ignored!");
                             listMaterialsInformations = null;
                             break;
                         }
                     }
                     else
                     {
-                        getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": bad configuration for key '" +  _strKeyName + "', configuration ignored!");
+                        _logger.sendWarningMessage("Configuration " + getMaterialType() + ": bad configuration for key '" +  _strKeyName + "', configuration ignored!");
                         listMaterialsInformations = null;
                         break;
                     }
                 }
                 else
                 {
-                    getPlugin().getLogger().warning("Configuration " + getMaterialType() + ": bad configuration for key '" +  _strKeyName + "', configuration ignored!");
+                    _logger.sendWarningMessage("Configuration " + getMaterialType() + ": bad configuration for key '" +  _strKeyName + "', configuration ignored!");
                     listMaterialsInformations = null;
                     break;
                 }
@@ -303,7 +306,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                             if (_lambdaIsMaterialInformationValid.apply(materialInformation))
                             {
                                 listMaterialsInformations.add(materialInformation);
-                                if (getPlugin().isVerboseLogEnabled())
+                                if (_logger.isVerboseLogEnabled())
                                 {
                                     _lambdaInfoAdd.accept(materialInformation);
                                 }
@@ -322,7 +325,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                     if (_lambdaIsMaterialInformationValid.apply(materialInformation))
                     {
                         listMaterialsInformations.add(materialInformation);
-                        if (getPlugin().isVerboseLogEnabled())
+                        if (_logger.isVerboseLogEnabled())
                         {
                             _lambdaInfoAdd.accept(materialInformation);
                         }
@@ -341,12 +344,14 @@ public abstract class AMaterialManager  implements IMaterialManager
     /**
      * Get a list of regions names from a _listRegionsNames.
      *
+     * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
+
      * @param _listRegionsNames List of regions names or regex. If empty, take all regions.
      * @param _lambdaInfoAdd Lambda to display log that this region is added.
      * @param _lambdaInfoInvalid Lambda to display log that this region is not added (but should be because it is into the list).
      * @return A regions list names.
      */
-    protected Set<String> findRegions(List<String> _listRegionsNames, Consumer<String> _lambdaInfoAdd, Consumer<String> _lambdaInfoInvalid)
+    protected Set<String> findRegions(LoggerDispatcher _logger, List<String> _listRegionsNames, Consumer<String> _lambdaInfoAdd, Consumer<String> _lambdaInfoInvalid)
     {
         HashSet<String> listRegions = new HashSet<String>();
 
@@ -364,7 +369,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                 }
                 else
                 {   // Add it
-                    if (getPlugin().isVerboseLogEnabled())
+                    if (_logger.isVerboseLogEnabled())
                     {
                         _lambdaInfoAdd.accept(strRegionNameItem);
                     }
@@ -384,7 +389,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                     }
                     else
                     {   // Add it
-                        if (getPlugin().isVerboseLogEnabled())
+                        if (_logger.isVerboseLogEnabled())
                         {
                             _lambdaInfoAdd.accept(strRegionName);
                         }
@@ -405,7 +410,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                             }
                             else
                             {   // Add it
-                                if (getPlugin().isVerboseLogEnabled())
+                                if (_logger.isVerboseLogEnabled())
                                 {
                                     _lambdaInfoAdd.accept(strRegionNameItem);
                                 }

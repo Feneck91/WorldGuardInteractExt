@@ -146,12 +146,12 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                     regions.add(strRegion);
                 }
             }
-            lstRegions = findRegions(regions,
+            lstRegions = findRegions(_logger, regions,
                     (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
                     (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
             );
         }
-        listMaterial = findMaterials("names", _mapItems, this::isMaterialValidForType);
+        listMaterial = findMaterials(_logger, "names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
             _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found no item!");
@@ -180,7 +180,7 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                         }
                         return bRetValidMaterialInfo;
                     };
-            Function<MaterialInformation, Boolean> lamdaCheckIsValidEmpty =
+            Function<MaterialInformation, Boolean> lambdaCheckIsValidEmpty =
                 (MaterialInformation materialInformation) ->
                     {   // Check if MaterialInformation is valid
                         boolean bRetValidMaterialInfo = false;
@@ -200,8 +200,8 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                         return bRetValidMaterialInfo;
                     };
 
-            if (    !readMaterial("fill", _mapItems, lstFillMaterials, true, lamdaCheckIsValidFill)
-                 || !readMaterial("empty", _mapItems, lstEmptyMaterials, true, lamdaCheckIsValidEmpty))
+            if (    !readMaterial(_logger, "fill", _mapItems, lstFillMaterials, true, lamdaCheckIsValidFill)
+                 || !readMaterial(_logger, "empty", _mapItems, lstEmptyMaterials, true, lambdaCheckIsValidEmpty))
             {
                 bRet = false;
             }
@@ -210,7 +210,11 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                 _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no material found for at least one of both fill / empty, ignored!");
                 // bRet = false; No, not a critical error, just ignore __CAULDRON__ configuration
             }
-            boolean bForceForbidden = Boolean.parseBoolean((String) _mapItems.get("force_forbidden"));
+            boolean bForceForbidden = false;
+            if (_mapItems.get("force_forbidden") instanceof Boolean booleanValue)
+            {
+                bForceForbidden = booleanValue;
+            }
             _logger.sendInfoMessage("Configuration " + getMaterialType() + ": force forbidden = '" + Boolean.toString(bForceForbidden) + "'");
             String strFillForbiddenMessage = null;
             String strEmptyForbiddenMessage = null;

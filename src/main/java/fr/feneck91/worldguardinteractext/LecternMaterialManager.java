@@ -1,5 +1,7 @@
 package fr.feneck91.worldguardinteractext;
 
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldedit.bukkit.BukkitPlayer;
 import com.sk89q.worldedit.util.formatting.text.Component;
 import com.sk89q.worldedit.util.formatting.text.TranslatableComponent;
 import org.bukkit.ChatColor;
@@ -8,6 +10,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.Lectern;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -16,6 +19,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -125,12 +129,12 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                     regions.add(strRegion);
                 }
             }
-            lstRegions = findRegions(regions,
+            lstRegions = findRegions(_logger, regions,
                     (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
                     (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
             );
         }
-        listMaterial = findMaterials("names", _mapItems, this::isMaterialValidForType);
+        listMaterial = findMaterials(_logger, "names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
             _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found no item!");
@@ -169,8 +173,8 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                         return bRetValidMaterialInfo;
                     };
 
-            if (    !readMaterial("put", _mapItems, lstPutMaterials, true, lamdaCheckIsValid)
-                 || !readMaterial("remove", _mapItems, lstRemoveMaterials, true, lamdaCheckIsValid))
+            if (    !readMaterial(_logger, "put", _mapItems, lstPutMaterials, true, lamdaCheckIsValid)
+                 || !readMaterial(_logger, "remove", _mapItems, lstRemoveMaterials, true, lamdaCheckIsValid))
             {
                 bRet = false;
             }
@@ -335,19 +339,26 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                         interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
                         if (lecternBookToRemove != null)
                         {   // Remove book on lectern
-                            Map<String, Component> placeholders = Map.of(
-                            "lectern", TranslatableComponent.of(_block.getTranslationKey()),
-                            "removed_book", TranslatableComponent.of(lecternBookToRemove.getType().getTranslationKey())
-                            );
-                            Component translatedForbiddenMessage = formatPlaceHolders(infosLectern.m_strRemoveForbiddenMessage, placeholders);
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerTakeLecternBookEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel,
-                                (event) ->
+                            Consumer<Event> _lambdaActionEventForbidden;
+                            if (infosLectern.m_strRemoveForbiddenMessage != null && !infosLectern.m_strRemoveForbiddenMessage.isEmpty())
+                            {
+                                Map<String, Component> placeholders = Map.of(
+                                    "lectern", TranslatableComponent.of(_block.getTranslationKey()),
+                                    "removed_book", TranslatableComponent.of(lecternBookToRemove.getType().getTranslationKey())
+                                );
+                                Component translatedForbiddenMessage = formatPlaceHolders(infosLectern.m_strRemoveForbiddenMessage, placeholders);
+                                BukkitPlayer bukkitPlayer = BukkitAdapter.adapt(player);
+                                _lambdaActionEventForbidden = (_lambdaEvent) ->
                                 {
-                                    if (infosLectern.m_strRemoveForbiddenMessage != null && !infosLectern.m_strRemoveForbiddenMessage.isEmpty())
-                                    {
-                                        ((PlayerTakeLecternBookEvent) event).getPlayer().sendMessage(infosLectern.m_strRemoveForbiddenMessage);
-                                    }
-                                }));
+                                    bukkitPlayer.print(translatedForbiddenMessage);
+                                };
+                            }
+                            else
+                            {
+                                _lambdaActionEventForbidden = null;
+                            }
+
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerTakeLecternBookEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, _lambdaActionEventForbidden));
                         }
                         else
                         {   // Put book on lectern
