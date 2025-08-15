@@ -126,7 +126,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
             );
         }
-        listMaterial = findMaterials(_logger,"names", _mapItems, this::isMaterialValidForType);
+        listMaterial = findMaterials(_logger, true, "names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
             _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found no item!");
@@ -168,9 +168,9 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     };
 
             // Read inflame
-            if (   readMaterial(_logger, "inflame", _mapItems, listInflame, true, lambdaCheckIsValid)
+            if (   readMaterial(_logger,  true, "inflame", _mapItems, listInflame, true, lambdaCheckIsValid)
                    // Read extinguish
-                && readMaterial(_logger, "extinguish", _mapItems, listExtinguish, true, lambdaCheckIsValid))
+                && readMaterial(_logger,  true, "extinguish", _mapItems, listExtinguish, true, lambdaCheckIsValid))
             {
                 if (listInflame.isEmpty() && listExtinguish.isEmpty())
                 {   // Should have at least one of both
@@ -263,15 +263,15 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
             // Here, we are sure, _block.getType() is Flammable
             if (_block.getBlockData() instanceof Lightable lightableBlockData)
             {
-                final ItemStack handItem;       // If the user have an item into his hand
+                final ItemStack itemHand;       // If the user have an item into his hand
                 final Material causeMaterial;   // Can be handItem material or other if handItem is null
 
                 if (_event instanceof PlayerInteractEvent playerInteractEvent)
                 {
-                    handItem = playerInteractEvent.getItem();
-                    causeMaterial = (handItem == null)
+                    itemHand = playerInteractEvent.getItem();
+                    causeMaterial = (itemHand == null)
                         ? Material.AIR
-                        : handItem.getType();
+                        : itemHand.getType();
                     player = playerInteractEvent.getPlayer();
                 }
                 else if (_event instanceof BlockIgniteEvent blockIgniteEvent)
@@ -279,12 +279,12 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     player = blockIgniteEvent.getPlayer();
                     if (player != null)
                     {   // If the fire ignit with player
-                        handItem = player.getInventory().getItemInMainHand();
-                        causeMaterial = handItem.getType();
+                        itemHand = player.getInventory().getItemInMainHand();
+                        causeMaterial = itemHand.getType();
                     }
                     else if (blockIgniteEvent.getIgnitingEntity() != null)
                     {   // If the fire ignit with entity (like mob, arrow, etc)
-                        handItem = null;
+                        itemHand = null;
                         Entity igniter = blockIgniteEvent.getIgnitingEntity();
 
                         if (igniter instanceof Projectile projectile)
@@ -309,7 +309,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                     }
                     else
                     {
-                        handItem = null;
+                        itemHand = null;
                         switch (blockIgniteEvent.getCause())
                         {
                             case LAVA           -> causeMaterial = Material.LAVA;
@@ -323,7 +323,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                 }
                 else
                 {
-                    handItem = null;
+                    itemHand = null;
                     causeMaterial = null;
                 }
                 // Create lambda function
@@ -336,12 +336,12 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                         {
                             bRet = true; // Ok this material is allowed to be used
                         }
-                        else if (handItem != null)
+                        else if (itemHand != null)
                         {   // Check properties
                             bRet = true;
-                            if (handItem.hasItemMeta())
+                            if (itemHand.hasItemMeta())
                             {   // Only if has META
-                                final ItemMeta itemMeta = Objects.requireNonNull(handItem.getItemMeta()); // Cannot be null here
+                                final ItemMeta itemMeta = Objects.requireNonNull(itemHand.getItemMeta()); // Cannot be null here
                                 bRet = item.getProperties().entrySet().stream().allMatch(prop ->
                                        (prop.getKey().equals("name") && itemMeta.hasDisplayName() && itemMeta.getDisplayName().equals(prop.getValue()))
                                     || (prop.getKey().equals("lore") && itemMeta.hasLore() && !itemMeta.getLore().isEmpty() && itemMeta.getLore().get(0).equals(prop.getValue()))

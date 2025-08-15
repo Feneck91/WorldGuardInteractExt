@@ -151,7 +151,7 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                     (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
             );
         }
-        listMaterial = findMaterials(_logger, "names", _mapItems, this::isMaterialValidForType);
+        listMaterial = findMaterials(_logger,  true, "names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
             _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found no item!");
@@ -200,8 +200,8 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                         return bRetValidMaterialInfo;
                     };
 
-            if (    !readMaterial(_logger, "fill", _mapItems, lstFillMaterials, true, lamdaCheckIsValidFill)
-                 || !readMaterial(_logger, "empty", _mapItems, lstEmptyMaterials, true, lambdaCheckIsValidEmpty))
+            if (    !readMaterial(_logger,  true, "fill", _mapItems, lstFillMaterials, true, lamdaCheckIsValidFill)
+                 || !readMaterial(_logger,  true, "empty", _mapItems, lstEmptyMaterials, true, lambdaCheckIsValidEmpty))
             {
                 bRet = false;
             }

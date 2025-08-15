@@ -133,7 +133,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                     (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
             );
         }
-        listMaterial = findMaterials(_logger, "names", _mapItems, this::isMaterialValidForType);
+        listMaterial = findMaterials(_logger,  true, "names", _mapItems, this::isMaterialValidForType);
         if (listMaterial.isEmpty())
         {
             _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found no item!");
@@ -141,7 +141,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
         }
         else
         {   // Read put / remove material
-            Function<MaterialInformation, Boolean> lamdaCheckIsValid =
+            Function<MaterialInformation, Boolean> lambdaCheckIsValid =
                 (MaterialInformation materialInformation) ->
                     {   // Check if MaterialInformation is valid
                         boolean bRetValidMaterialInfo = false;
@@ -172,8 +172,8 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
                         return bRetValidMaterialInfo;
                     };
 
-            if (    !readMaterial(_logger, "put", _mapItems, lstPutMaterials, true, lamdaCheckIsValid)
-                 || !readMaterial(_logger, "remove", _mapItems, lstRemoveMaterials, true, lamdaCheckIsValid))
+            if (    !readMaterial(_logger,  true, "put", _mapItems, lstPutMaterials, true, lambdaCheckIsValid)
+                 || !readMaterial(_logger,  true, "remove", _mapItems, lstRemoveMaterials, true, lambdaCheckIsValid))
             {
                 bRet = false;
             }

@@ -2,7 +2,6 @@ package fr.feneck91.worldguardinteractext;
 
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.util.formatting.text.Component;
-import com.sk89q.worldedit.util.formatting.text.ComponentBuilder;
 import com.sk89q.worldedit.util.formatting.text.TextComponent;
 import com.sk89q.worldedit.util.formatting.text.format.TextColor;
 import com.sk89q.worldguard.WorldGuard;
@@ -12,13 +11,11 @@ import com.sk89q.worldguard.protection.regions.RegionContainer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.Block;
 
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Base class for all MaterialManagers class.
@@ -128,24 +125,25 @@ public abstract class AMaterialManager  implements IMaterialManager
     }
 
     /**
-     * Read material with extra informations.
+     * Read material with extra information.
      *
      * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
-     * @param _strKeyName Key name to retrieve the list of materials informations (name / regex and extra informations).
-     * @param _mapItems Map where to find informations.
+     * @param _bSearchMaterialIfListEmpty If the list is empty, this allow to make search to all material allowed.
+     * @param _strKeyName Key name to retrieve the list of materials information (name / regex and extra information).
+     * @param _mapItems Map where to find information.
      * @param _lstMaterialsInformation Materials information list to fill.
-     * @param _bIsEmptyAllowed If empty is not allowed, return false if the key doesn't exists, else just
+     * @param _bIsEmptyAllowed If empty is not allowed, return false if the key doesn't exist, else just
      *                         not fill _lstMaterialsInformation.
      * @param _lambdaIsMaterialInformationValid Lambda to check if the material information is valid for this search.
      *                                          If null all is allowed.
      * @return true if no error, false else.
      */
-    protected boolean readMaterial(LoggerDispatcher _logger, String _strKeyName, Map<String, Object> _mapItems, List<MaterialInformation> _lstMaterialsInformation, boolean _bIsEmptyAllowed, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid)
+    protected boolean readMaterial(LoggerDispatcher _logger, boolean _bSearchMaterialIfListEmpty, String _strKeyName, Map<String, Object> _mapItems, List<MaterialInformation> _lstMaterialsInformation, boolean _bIsEmptyAllowed, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid)
     {
         boolean bRet = true;
         if (_mapItems.containsKey(_strKeyName))
         {
-            List<MaterialInformation> lstMaterialsInformation = findMaterialsWithProperties(_logger, _strKeyName, _mapItems, _lambdaIsMaterialInformationValid,
+            List<MaterialInformation> lstMaterialsInformation = findMaterialsWithProperties(_logger, _bSearchMaterialIfListEmpty, _strKeyName, _mapItems, _lambdaIsMaterialInformationValid,
                 (MaterialInformation materialInformation) ->
                     {
                         _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add " + _strKeyName + ": " + materialInformation.toString());
@@ -176,16 +174,17 @@ public abstract class AMaterialManager  implements IMaterialManager
      * Get a list of materials from a _listMaterialNames.
      *
      * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
-     * @param _strKeyName Key name to retrieve the list of materials informations (name / regex and extra informations).
-     * @param _mapItems Map where to find informations.
+     * @param _bSearchMaterialIfListEmpty If the list is empty, this allow to make search to all material allowed.
+     * @param _strKeyName Key name to retrieve the list of materials information (name / regex and extra information).
+     * @param _mapItems Map where to find information.
      * @param _lambdaIsMaterialValid Lambda to check if the material is valid for this search.
      * @return An allowed material list.
      */
-    protected List<Material> findMaterials(LoggerDispatcher _logger, String _strKeyName, Map<String, Object> _mapItems, Function<Material, Boolean> _lambdaIsMaterialValid)
+    protected List<Material> findMaterials(LoggerDispatcher _logger, boolean _bSearchMaterialIfListEmpty, String _strKeyName, Map<String, Object> _mapItems, Function<Material, Boolean> _lambdaIsMaterialValid)
     {
         List<Material> listMaterials = new ArrayList<Material>();
         List<MaterialInformation> lstMaterialsInformation = new ArrayList<MaterialInformation>();
-        if (readMaterial(_logger, _strKeyName, _mapItems, lstMaterialsInformation, false, (MaterialInformation itemMaterialInformation) ->
+        if (readMaterial(_logger, _bSearchMaterialIfListEmpty, _strKeyName, _mapItems, lstMaterialsInformation, false, (MaterialInformation itemMaterialInformation) ->
             {
                 return    itemMaterialInformation != null
                        && itemMaterialInformation.getMaterial() != null
@@ -194,7 +193,7 @@ public abstract class AMaterialManager  implements IMaterialManager
             }))
         {
             listMaterials.addAll(lstMaterialsInformation.stream()   // Use stream
-                .map(MaterialInformation::getMaterial)              // Transfor each MaterialInformation to Material
+                .map(MaterialInformation::getMaterial)              // Transform each MaterialInformation to Material
                 .toList());                                         // Collect to List<Material>
         }
 
@@ -205,6 +204,7 @@ public abstract class AMaterialManager  implements IMaterialManager
      * Get a list of materials from a name.
      *
      * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
+     * @param _bSearchMaterialIfListEmpty If the list is empty, this allow to make search to all material allowed.
      * @param _strKeyName Key name to retrieve the list of materials information (name / regex and extra information).
      * @param _mapItems Map where to find information.
      * @param _lambdaIsMaterialInformationValid Lambda to check if the material information is valid for this search.
@@ -213,24 +213,27 @@ public abstract class AMaterialManager  implements IMaterialManager
      * @param _lambdaInfoInvalid Lambda to display log that this material is not added (but should be).
      * @return An allowed material information list.
      */
-    private List<MaterialInformation> findMaterialsWithProperties(LoggerDispatcher _logger, String _strKeyName, Map<String, Object> _mapItems, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid, Consumer<MaterialInformation> _lambdaInfoAdd, Consumer<MaterialInformation> _lambdaInfoInvalid)
+    private List<MaterialInformation> findMaterialsWithProperties(LoggerDispatcher _logger, boolean _bSearchMaterialIfListEmpty, String _strKeyName, Map<String, Object> _mapItems, Function<MaterialInformation, Boolean> _lambdaIsMaterialInformationValid, Consumer<MaterialInformation> _lambdaInfoAdd, Consumer<MaterialInformation> _lambdaInfoInvalid)
     {
-        ArrayList<Object> listMaterialInformations = (ArrayList<Object>) _mapItems.get(_strKeyName);
+        ArrayList<Object> listMaterialInformation = (ArrayList<Object>) _mapItems.get(_strKeyName);
         List<MaterialInformation> listMaterialsInformations = new ArrayList<MaterialInformation>();
         Map<String, String> dicProperties = new HashMap<String, String>();
 
         // Read all materials
-        if (listMaterialInformations.isEmpty())
-        {   // Empty list, take all material that are valid
-            for (Material itemMaterial : Material.values())
+        if (listMaterialInformation.isEmpty())
+        {   // Empty list, take all material that are valid (if _bSearchMaterialIfListEmpty)
+            if (_bSearchMaterialIfListEmpty)
             {
-                MaterialInformation materialInformation = new MaterialInformation(itemMaterial, null);
-                if (_lambdaIsMaterialInformationValid == null || _lambdaIsMaterialInformationValid.apply(materialInformation))
+                for (Material itemMaterial : Material.values())
                 {
-                    listMaterialsInformations.add(materialInformation);
-                    if (_logger.isVerboseLogEnabled() && _lambdaInfoAdd != null)
+                    MaterialInformation materialInformation = new MaterialInformation(itemMaterial, null);
+                    if (_lambdaIsMaterialInformationValid == null || _lambdaIsMaterialInformationValid.apply(materialInformation))
                     {
-                        _lambdaInfoAdd.accept(materialInformation);
+                        listMaterialsInformations.add(materialInformation);
+                        if (_logger.isVerboseLogEnabled() && _lambdaInfoAdd != null)
+                        {
+                            _lambdaInfoAdd.accept(materialInformation);
+                        }
                     }
                 }
             }
@@ -240,7 +243,7 @@ public abstract class AMaterialManager  implements IMaterialManager
             Material itemMaterialFound = null;
             String strItemName = null; // Name or regex
 
-            for (Object oItem : listMaterialInformations)
+            for (Object oItem : listMaterialInformation)
             {
                 if (oItem instanceof String strItemNameToFind)
                 {   // Only a material name
