@@ -30,10 +30,11 @@ public class MaterialConfig
 
     /**
      * Materials managers map.
-     *
-     * The key is the super type (__FIRE__, __FIELD__, etc)
+     * <p>
+     * The key is the super type (__FIRE__, __FIELD__, etc).
+     * </p>
      */
-    private HashMap<String, IMaterialManager> m_mapMaterialManagers;
+    private final HashMap<String, IMaterialManager> m_mapMaterialManagers;
 
     /**
      * Constructor.
@@ -48,6 +49,7 @@ public class MaterialConfig
         m_mapMaterialManagers.put(CampFireMaterialManager.MATERIAL_TYPE, new CampFireMaterialManager(_plugin));
         m_mapMaterialManagers.put(LecternMaterialManager.MATERIAL_TYPE, new LecternMaterialManager(_plugin));
         m_mapMaterialManagers.put(CauldronMaterialManager.MATERIAL_TYPE, new CauldronMaterialManager(_plugin));
+        m_mapMaterialManagers.put(BlockBreakManager.MATERIAL_TYPE, new BlockBreakManager(_plugin));
     }
 
     /**
@@ -141,23 +143,24 @@ public class MaterialConfig
                 block = playerTakeLecternBookEvent.getLectern().getBlock();
             }
 
-            if (player != null)
+            if (player != null && block != null)
             {
                 World world = player.getWorld();
                 RegionManager manager = container.get(BukkitAdapter.adapt(world));
                 if (manager != null)
                 {
-                    ApplicableRegionSet regionSet = manager.getApplicableRegions(BukkitAdapter.asBlockVector(player.getLocation()));
+                    // Get region from block location, not from player location
+                    ApplicableRegionSet regionSet = manager.getApplicableRegions(BukkitAdapter.asBlockVector(block.getLocation()));
                     // Take region with highter priority
-                    String strCurrentPlayerRegionName = regionSet.getRegions().stream()
+                    String strBlocRegionName = regionSet.getRegions().stream()
                                                         .max(Comparator.comparingInt(ProtectedRegion::getPriority))
                                                         .map(ProtectedRegion::getId)
                                                         .orElse(null);
-                    if (strCurrentPlayerRegionName != null)
+                    if (strBlocRegionName != null)
                     {
                         for (IMaterialManager materialManager : m_mapMaterialManagers.values())
                         {
-                            interactEventInfos = materialManager.managePlayerInteraction(_event, block, world, strCurrentPlayerRegionName);
+                            interactEventInfos = materialManager.managePlayerInteraction(_event, block, world, strBlocRegionName);
                             if (interactEventInfos != null)
                             {
                                 break;
