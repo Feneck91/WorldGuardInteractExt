@@ -2,6 +2,7 @@ package fr.feneck91.worldguardinteractext;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
@@ -433,6 +434,19 @@ public class InteractEventManager implements Listener
             }
             return bRet;
         }
+
+        /**
+         * Manage player break block evant.
+         *
+         * @param _plugin Plugin.
+         * @param _event Event.
+         * @param _eventPriority Event priority.
+         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         */
+        public boolean ManageEvent(WorldGuardInteractExt _plugin, BlockBreakEvent _event, EventPriority _eventPriority)
+        {
+            return ManageEvent(_plugin, _event, _eventPriority, _event.getPlayer(), _event.getBlock());
+        }
     }
 
     /**
@@ -555,9 +569,10 @@ public class InteractEventManager implements Listener
 
     /**
      * When player make event.
-     *
+     * <p>
      * Check if it must be uncanceled. It is the only code place where all check is done to know if the user will
      * do something that the plugin is able to manage or not.
+     * </p>
      *
      * @param _event The event
      */
@@ -589,10 +604,10 @@ public class InteractEventManager implements Listener
 
     /**
      * When player make event.
-     *
+     * <p>
      * Check if it must be uncanceled. It is the only code place where all check is done to know if the user will
      * do something that the plugin is able to manage or not.
-     *
+     *</p>
      * @param _event The event
      */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -610,8 +625,9 @@ public class InteractEventManager implements Listener
 
     /**
      * When block is ignite event.
-     *
+     * <p>
      * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
+     * </p>
      *
      * @param _event The event
      */
@@ -633,8 +649,9 @@ public class InteractEventManager implements Listener
 
     /**
      * When block is ignite event.
-     *
+     * <p>
      * Used when block ignite, even the player make event to put fire, it is this event that is called, check if it must be uncanceled.
+     * </p>
      *
      * @param _event The event
      */
@@ -745,6 +762,42 @@ public class InteractEventManager implements Listener
                 {
                     m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
                 }
+            }
+        }
+    }
+
+    /**
+     * When a block is broken.
+     *
+     * @param _event The event.
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockBreakEventLowest(BlockBreakEvent _event)
+    {
+        UUID uuidPlayer = _event.getPlayer().getUniqueId();
+        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        {
+            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+            {
+                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+            }
+        }
+    }
+
+    /**
+     * When a block is broken.
+     *
+     * @param _event The event.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockBreakEventHighest(BlockBreakEvent _event)
+    {
+        UUID uuidPlayer = _event.getPlayer().getUniqueId();
+        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        {
+            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+            {
+                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
             }
         }
     }

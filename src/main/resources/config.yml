@@ -67,7 +67,7 @@ items:
       remove_forbidden_message: "&eYou cannot remove <removed_book> from the <lectern>!"
     },
     {
-      # Specify type of extended interection: here it is lectern
+      # Specify type of extended interection: here it is cauldron
       type: "__CAULDRON__",
       # name : must be only CAUDRON / LAVA_CAULDRON / WATER_CAULDRON / POWDER_SNOW_CAULDRON
       names: ["CAULDRON", "LAVA_CAULDRON", "WATER_CAULDRON", "POWDER_SNOW_CAULDRON"],
@@ -93,5 +93,18 @@ items:
       # Allow to use <hand_material> for the name of the item in the player's hand (automatically translated).
       fill_forbidden_message: "&eYou cannot fill this <cauldron> with <hand_material>!",
       empty_forbidden_message: "&eYou cannot empty this <cauldron> with <hand_material>!",
+    },
+    {
+      # Specify type of extended interection: here it is breakable blocs
+      type: "__BLOCKBREAK__",
+      # name : All block you want. Plugin is not able to validate material type here. It will work only for
+      # breakable blocks. Put empty list here is not allowed.
+      names: [""],
+      # Region : you MUST add world name before region name to make it work
+      # Put  [] to accept all regions
+      # regions: ["myworld.region_1", "myworld.region_2"],
+      regions: [], # All regions
+      # Use tool(s), allowed by Minecraft to be able to break blocks.
+      tool: [ "" ],
     }
   ]
