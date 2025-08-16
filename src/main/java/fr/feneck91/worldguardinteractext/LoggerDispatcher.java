@@ -66,7 +66,7 @@ public class LoggerDispatcher
     {
         if (m_commandSender != null)
         {
-            m_commandSender.sendMessage(ChatColor.WHITE + _strMessage);
+            m_commandSender.sendMessage(ChatColor.WHITE + patchMessage(_strMessage));
         }
         else if (isVerboseLogEnabled())
         {
@@ -86,7 +86,7 @@ public class LoggerDispatcher
     {
         if (m_commandSender != null)
         {
-            m_commandSender.sendMessage(TextColor.GOLD + _strMessage);
+            m_commandSender.sendMessage(TextColor.GOLD + patchMessage(_strMessage));
         }
         else
         {
@@ -106,7 +106,7 @@ public class LoggerDispatcher
     {
         if (m_commandSender != null)
         {
-            m_commandSender.sendMessage(ChatColor.RED + _strMessage);
+            m_commandSender.sendMessage(ChatColor.RED + patchMessage(_strMessage));
         }
         else
         {
@@ -126,7 +126,7 @@ public class LoggerDispatcher
     {
         if (m_commandSender != null)
         {
-            m_commandSender.sendMessage(ChatColor.WHITE + _strMessage);
+            m_commandSender.sendMessage(ChatColor.WHITE + patchMessage(_strMessage));
         }
         else
         {
@@ -148,11 +148,22 @@ public class LoggerDispatcher
     {
         if (m_commandSender != null)
         {
-            m_commandSender.sendMessage(_color + _strMessage);
+            m_commandSender.sendMessage(_color + patchMessage(_strMessage));
         }
         else
         {
             getPlugin().getLogger().info(_color + _strMessage);
         }
+    }
+
+    /**
+     * Patch string to display § into message (colors).
+     *
+     * @param _strMessage Message to patch.
+     * @return A patched message string.
+     */
+    private String patchMessage(String _strMessage)
+    {
+        return _strMessage.replace("§", "§\u00A7");
     }
 }

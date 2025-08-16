@@ -31,7 +31,13 @@ This is why this plugin was created, to add more interaction rules by disable te
       - Allow to forbidden interaction with cauldron or let WorldGuard do the job with its with own flags.
       - Allow to display messages to player when interaction is forbidden (fill / empty).
     Bugs fixes: fix logger for command.
-    Allow to use place holder to display material / bloc to the user into message (explanation into config.yaml).
+    Allow to use place holder to display material / block to the user into message (explanation into config.yaml).
+  - __4.0__ : 2025/08/16
+    This version allow to manage __breaking blocks__ : 
+      - Choose the type of blocks allowed to be broken .
+      - Choose tools allowed to break the blocks.
+    This allow to break block even the region is protected from breaking blocks with WorldGuard.  
+    Bug fix: compute regions from block location instead of player's one.
 
 # The configuration file (config.yaml):
 ```yaml
@@ -89,7 +95,7 @@ items:
       # regions: ["myworld.region_1", "myworld.region_2"],
       regions: [], # All regions
       # For WRITTEN_BOOK, you can specify author and / or title to accept only a special book.
-      # For WRITABLE_BOOK, only WRITABLE_BOOK can be specify.
+      # For WRITABLE_BOOK, only WRITABLE_BOOK can be specified.
       # If empty, search all material. If no material remove this entry.
       put: [ "WRITABLE_BOOK", { "material" : "WRITTEN_BOOK", "author" : "This is the author", "title" : "The title of the book" } ],
       # This lines are also accepted too!
@@ -104,7 +110,7 @@ items:
       remove_forbidden_message: "&eYou cannot remove <removed_book> from the <lectern>!"
     },
     {
-      # Specify type of extended interection: here it is lectern
+      # Specify type of extended interection: here it is cauldron
       type: "__CAULDRON__",
       # name : must be only CAUDRON / LAVA_CAULDRON / WATER_CAULDRON / POWDER_SNOW_CAULDRON
       names: ["CAULDRON", "LAVA_CAULDRON", "WATER_CAULDRON", "POWDER_SNOW_CAULDRON"],
@@ -130,6 +136,27 @@ items:
       # Allow to use <hand_material> for the name of the item in the player's hand (automatically translated).
       fill_forbidden_message: "&eYou cannot fill this <cauldron> with <hand_material>!",
       empty_forbidden_message: "&eYou cannot empty this <cauldron> with <hand_material>!",
+    },
+    {
+      # Specify type of extended interection: here it is breakable blocs
+      type: "__BLOCKBREAK__",
+      # name : All block you want. Plugin is not able to validate material type here. It will work only for
+      # breakable blocks. Stone for example (names: ["STONE"]).
+      # Empty list is not allowed.
+      names: [],
+      # Region : you MUST add world name before region name to make it work
+      # Put  [] to accept all regions
+      # regions: ["myworld.region_1", "myworld.region_2"],
+      regions: [], # All regions
+      # Use tool(s), allowed by Minecraft to be able to break blocks.
+      # You can specify name / lore (only first item is checked) to accept only a special tool like:
+      #           tool: [ "STONE_PICKAXE", { material : "DIAMOND_PICKAXE", name : "My pickaxe", lore : "Create by me" } ],
+      #     Note : You can use regex for name into the previous line to accept several tools materials for same
+      #            extra information.
+      #     Note : You must add color into text if the name / lore has color.
+      #            See colors codes: https://minecraft.wiki/w/Formatting_codes
+      # Empty list is not allowed.
+      tool: [ ],
     }
   ]
 ```

@@ -17,13 +17,17 @@ import java.util.function.Predicate;
 
 /**
  * Class that implements MaterialManager to allow player to break some blocks with specific tools.
+ * <p>
+ * This work even the regions are protected from breaking blocks with WorldGuard.
+ * </p>
  */
 public class BlockBreakManager extends AMaterialManager implements IMaterialManager
 {
     /**
      * Material type that this class manage.
      * <p>
-     * It manages block break.
+     * It handles block breaking. There is no way to filter allowed blocks and tools; it is up to the serve
+     * administrator to choose the appropriate blocks and tools.
      * </p>
      */
     public static final String MATERIAL_TYPE = "__BLOCKBREAK__";

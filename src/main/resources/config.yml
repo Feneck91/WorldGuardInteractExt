@@ -52,7 +52,7 @@ items:
       # regions: ["myworld.region_1", "myworld.region_2"],
       regions: [], # All regions
       # For WRITTEN_BOOK, you can specify author and / or title to accept only a special book.
-      # For WRITABLE_BOOK, only WRITABLE_BOOK can be specify.
+      # For WRITABLE_BOOK, only WRITABLE_BOOK can be specified.
       # If empty, search all material. If no material remove this entry.
       put: [ "WRITABLE_BOOK", { "material" : "WRITTEN_BOOK", "author" : "This is the author", "title" : "The title of the book" } ],
       # This lines are also accepted too!
@@ -98,13 +98,21 @@ items:
       # Specify type of extended interection: here it is breakable blocs
       type: "__BLOCKBREAK__",
       # name : All block you want. Plugin is not able to validate material type here. It will work only for
-      # breakable blocks. Put empty list here is not allowed.
-      names: [""],
+      # breakable blocks. Stone for example (names: ["STONE"]).
+      # Empty list is not allowed.
+      names: [],
       # Region : you MUST add world name before region name to make it work
       # Put  [] to accept all regions
       # regions: ["myworld.region_1", "myworld.region_2"],
       regions: [], # All regions
       # Use tool(s), allowed by Minecraft to be able to break blocks.
-      tool: [ "" ],
+      # You can specify name / lore (only first item is checked) to accept only a special tool like:
+      #           tool: [ "STONE_PICKAXE", { material : "DIAMOND_PICKAXE", name : "My pickaxe", lore : "Create by me" } ],
+      #     Note : You can use regex for name into the previous line to accept several tools materials for same
+      #            extra information.
+      #     Note : You must add color into text if the name / lore has color.
+      #            See colors codes: https://minecraft.wiki/w/Formatting_codes
+      # Empty list is not allowed.
+      tool: [ ],
     }
   ]
