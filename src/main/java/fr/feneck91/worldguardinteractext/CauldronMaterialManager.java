@@ -147,7 +147,7 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                 }
             }
             lstRegions = findRegions(_logger, regions,
-                    (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
+                    (String strRegionName) -> { _logger.sendMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
                     (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
             );
         }
@@ -215,16 +215,16 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
             {
                 bForceForbidden = booleanValue;
             }
-            _logger.sendInfoMessage("Configuration " + getMaterialType() + ": force forbidden = '" + Boolean.toString(bForceForbidden) + "'");
+            _logger.sendMessage("Configuration " + getMaterialType() + ": force forbidden = '" + Boolean.toString(bForceForbidden) + "'");
             String strFillForbiddenMessage = null;
             String strEmptyForbiddenMessage = null;
             if (bForceForbidden)
             {   // Forbidden for fill
                 strFillForbiddenMessage = ChatColor.translateAlternateColorCodes('&', (String) _mapItems.get("fill_forbidden_message"));
-                _logger.sendInfoMessage("Configuration " + getMaterialType() + ": forbidden message (fill) = '" +( (strFillForbiddenMessage.isEmpty()) ? "<not defined>" : strFillForbiddenMessage) + "'");
+                _logger.sendMessage("Configuration " + getMaterialType() + ": forbidden message (fill) = '" +( (strFillForbiddenMessage.isEmpty()) ? "<not defined>" : strFillForbiddenMessage) + "'");
                 // Forbidden for empty
                 strEmptyForbiddenMessage = ChatColor.translateAlternateColorCodes('&', (String) _mapItems.get("empty_forbidden_message"));
-                _logger.sendInfoMessage("Configuration " + getMaterialType() + ": forbidden message (empty) = '" +( (strEmptyForbiddenMessage.isEmpty()) ? "<not defined>" : strEmptyForbiddenMessage) + "'");
+                _logger.sendMessage("Configuration " + getMaterialType() + ": forbidden message (empty) = '" +( (strEmptyForbiddenMessage.isEmpty()) ? "<not defined>" : strEmptyForbiddenMessage) + "'");
             }
             if (lstRegions == null || lstRegions.isEmpty())
             {

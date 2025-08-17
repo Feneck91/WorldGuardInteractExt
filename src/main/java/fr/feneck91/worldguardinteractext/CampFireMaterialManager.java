@@ -122,7 +122,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                 }
             }
             lstRegions = findRegions(_logger, regions,
-                    (String strRegionName) -> { _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
+                    (String strRegionName) -> { _logger.sendMessage("Configuration " + getMaterialType() + ": add region '" + strRegionName + "'"); },
                     (String strRegionName) -> { _logger.sendWarningMessage("Configuration " + getMaterialType() + ": found '" + strRegionName + "' more than once, second is ignored"); }
             );
         }

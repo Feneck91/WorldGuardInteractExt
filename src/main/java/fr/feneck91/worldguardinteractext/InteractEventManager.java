@@ -352,7 +352,10 @@ public class InteractEventManager implements Listener
                     if (m_lstEvents.isEmpty())
                     {
                         bRet = false;
-                        _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " event list is empty, surveillance of actions is done!");
+                        if (_plugin.isVerboseLogEnabled())
+                        {
+                            _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " event list is empty, surveillance of actions is done!");
+                        }
                     }
                 }
             }

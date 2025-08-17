@@ -146,7 +146,7 @@ public abstract class AMaterialManager  implements IMaterialManager
             List<MaterialInformation> lstMaterialsInformation = findMaterialsWithProperties(_logger, _bSearchMaterialIfListEmpty, _strKeyName, _mapItems, _lambdaIsMaterialInformationValid,
                 (MaterialInformation materialInformation) ->
                     {
-                        _logger.sendInfoMessage("Configuration " + getMaterialType() + ": add " + _strKeyName + ": " + materialInformation.toString());
+                        _logger.sendMessage("Configuration " + getMaterialType() + ": add " + _strKeyName + ": " + materialInformation.toString());
                     },
                 (MaterialInformation materialInformation) ->
                     {
@@ -193,8 +193,8 @@ public abstract class AMaterialManager  implements IMaterialManager
             }))
         {
             listMaterials.addAll(lstMaterialsInformation.stream()   // Use stream
-                .map(MaterialInformation::getMaterial)              // Transform each MaterialInformation to Material
-                .toList());                                         // Collect to List<Material>
+                         .map(MaterialInformation::getMaterial)     // Transform each MaterialInformation to Material
+                         .toList());                                // Collect to List<Material>
         }
 
         return listMaterials;
@@ -230,7 +230,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                     if (_lambdaIsMaterialInformationValid == null || _lambdaIsMaterialInformationValid.apply(materialInformation))
                     {
                         listMaterialsInformations.add(materialInformation);
-                        if (_logger.isVerboseLogEnabled() && _lambdaInfoAdd != null)
+                        if (_lambdaInfoAdd != null)
                         {
                             _lambdaInfoAdd.accept(materialInformation);
                         }
@@ -309,7 +309,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                             if (_lambdaIsMaterialInformationValid.apply(materialInformation))
                             {
                                 listMaterialsInformations.add(materialInformation);
-                                if (_logger.isVerboseLogEnabled())
+                                if (_lambdaInfoAdd != null)
                                 {
                                     _lambdaInfoAdd.accept(materialInformation);
                                 }
@@ -328,7 +328,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                     if (_lambdaIsMaterialInformationValid.apply(materialInformation))
                     {
                         listMaterialsInformations.add(materialInformation);
-                        if (_logger.isVerboseLogEnabled())
+                        if (_lambdaInfoAdd != null)
                         {
                             _lambdaInfoAdd.accept(materialInformation);
                         }
@@ -372,7 +372,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                 }
                 else
                 {   // Add it
-                    if (_logger.isVerboseLogEnabled())
+                    if (_lambdaInfoAdd != null)
                     {
                         _lambdaInfoAdd.accept(strRegionNameItem);
                     }
@@ -392,7 +392,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                     }
                     else
                     {   // Add it
-                        if (_logger.isVerboseLogEnabled())
+                        if (_lambdaInfoAdd != null)
                         {
                             _lambdaInfoAdd.accept(strRegionName);
                         }
@@ -413,7 +413,7 @@ public abstract class AMaterialManager  implements IMaterialManager
                             }
                             else
                             {   // Add it
-                                if (_logger.isVerboseLogEnabled())
+                                if (_lambdaInfoAdd != null)
                                 {
                                     _lambdaInfoAdd.accept(strRegionNameItem);
                                 }
