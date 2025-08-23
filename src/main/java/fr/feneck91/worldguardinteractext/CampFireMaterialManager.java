@@ -1,8 +1,6 @@
 package fr.feneck91.worldguardinteractext;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Lightable;
 import org.bukkit.entity.*;
@@ -12,6 +10,7 @@ import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -265,9 +264,10 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
             {
                 final ItemStack itemHand;       // If the user have an item into his hand
                 final Material causeMaterial;   // Can be handItem material or other if handItem is null
-
+                final EquipmentSlot hand;
                 if (_event instanceof PlayerInteractEvent playerInteractEvent)
                 {
+                    hand = playerInteractEvent.getHand();
                     itemHand = playerInteractEvent.getItem();
                     causeMaterial = (itemHand == null)
                         ? Material.AIR
@@ -276,6 +276,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                 }
                 else if (_event instanceof BlockIgniteEvent blockIgniteEvent)
                 {
+                    hand = null;
                     player = blockIgniteEvent.getPlayer();
                     if (player != null)
                     {   // If the fire ignit with player
@@ -324,6 +325,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                 else
                 {
                     itemHand = null;
+                    hand = null;
                     causeMaterial = null;
                 }
                 // Create lambda function
@@ -359,50 +361,71 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                         if (infosFire.m_lstExtinguishMaterials.stream().anyMatch(lambaIsAllowedMaterial))
                         {
                             interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
                             // For bucket
                             if (causeMaterial.name().endsWith("BUCKET"))
                             {
-                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
-                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
-                                interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
-                                    causeMaterial.equals(Material.WATER_BUCKET)
-                                        ? (event) ->
-                                            {
-                                                if (event instanceof PlayerBucketEmptyEvent playerBucketEmptyEvent)
-                                                {   // Let action to do (the fire will be extinguish automatically), then
-                                                    // remove water 1 tick after
-                                                    Bukkit.getScheduler().runTaskLater(getPlugin(), () ->
+                                if (causeMaterial.equals(Material.WATER_BUCKET))
+                                {
+                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerBucketEmptyEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
+                                        (event) ->
+                                        {
+                                            if (event instanceof PlayerBucketEmptyEvent playerBucketEmptyEvent)
+                                            {   // Let action to do (the fire will be extinguished automatically), then
+                                                // remove water 1 tick after
+                                                Bukkit.getScheduler().runTaskLater(getPlugin(), () ->
+                                                {
+                                                    lightableBlockData.setLit(false);
+                                                    _block.setBlockData(lightableBlockData);
+                                                    if (getPlugin().isVerboseLogEnabled())
                                                     {
-                                                        lightableBlockData.setLit(false);
-                                                        _block.setBlockData(lightableBlockData);
-                                                        if (getPlugin().isVerboseLogEnabled())
-                                                        {
-                                                            getPlugin().getLogger().info("Remove water after extinguish fire camp with water bucket");
-                                                        }
-                                                    }, 1L); // 1 tick later: water is placed, we can remove it
-                                                }
+                                                        getPlugin().getLogger().info("Remove water after extinguish fire camp with water bucket");
+                                                    }
+                                                }, 1L); // 1 tick later: water is placed, we can remove it
                                             }
-                                        : null));
+                                        }));
+                                }
                             }
                             else
                             {
                                 if (causeMaterial.equals(Material.AIR))
                                 {   // Trying to stop fire with hand only : no BlockPlaceEvent and lambda for PlayerInteractEvent HIGHEST
+                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
                                     interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
                                         (event) ->
                                         {   // Replace by not burn item
                                             lightableBlockData.setLit(false);
                                             _block.setBlockData(lightableBlockData);
                                             // And play sound
-                                            _block.getWorld().playSound(_block.getLocation(), "block.fire.extinguish", 1.0f, 1.0f);
+                                            _block.getWorld().playSound(_block.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 1.0f, 1.0f);
                                         }));
                                 }
                                 else
                                 {   // Normal way
-                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
-                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
-                                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                                    if (isPlayerIsBedrock(player))
+                                    {   // Managing with event Not work with bedrock : do it manually
+                                        final Player player4Lambda = player;
+                                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel,
+                                            (event) ->
+                                            {   // Replace by not burn item
+                                                lightableBlockData.setLit(false);
+                                                _block.setBlockData(lightableBlockData);
+                                                // And play sound
+                                                _block.getWorld().playSound(_block.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 1.0f, 1.0f);
+                                                // Damage item
+                                                applyDamage(hand, player4Lambda);
+                                            }));
+                                    }
+                                    else
+                                    {
+                                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                                    }
                                 }
                             }
                         }
@@ -416,10 +439,24 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
 
                         if (_event instanceof BlockIgniteEvent)
                         {   // Compute for BlockIgniteEvent
+                            final Player player4Lambda = player;
+                            boolean bIsBedrockManagement = (isPlayerIsBedrock(player) && causeMaterial.equals(Material.FLINT_AND_STEEL));
+
                             interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
                             interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockIgniteEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
                             interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
-                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, null));
+                            interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,
+                                bIsBedrockManagement
+                                ? (event) ->
+                                    {   // Replace by burn item for Bedrock (Flint and steal only)
+                                        lightableBlockData.setLit(true);
+                                        _block.setBlockData(lightableBlockData);
+                                        // And play sound
+                                        _block.getWorld().playSound(_block.getLocation(), Sound.ITEM_FLINTANDSTEEL_USE, 1.0f, 1.0f);
+                                        // Damage item
+                                        applyDamage(hand, player4Lambda);
+                                    }
+                                : null));
                         }
                         else
                         {   // Waiting BlockIgniteEvent to recompute

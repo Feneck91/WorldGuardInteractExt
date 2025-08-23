@@ -1,5 +1,6 @@
 package fr.feneck91.worldguardinteractext;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -13,6 +14,11 @@ import org.bukkit.plugin.java.JavaPlugin;
  */
 public class WorldGuardInteractExt extends JavaPlugin
 {
+    /**
+     * Is current server is 'Paper' or 'CraftBukkit/Spigot'.
+     */
+    private boolean                         m_bIsPaper;
+
     /**
      * Is verbose log enabled?
      */
@@ -37,6 +43,7 @@ public class WorldGuardInteractExt extends JavaPlugin
         // Default config with nothing into it
         m_materialConfig = new MaterialConfig(this);
         m_interactionManager = new InteractEventManager(this, m_materialConfig);
+        m_bIsPaper = Bukkit.getServer().getName().equals("Paper");
     }
 
     /**
@@ -47,6 +54,16 @@ public class WorldGuardInteractExt extends JavaPlugin
     public boolean isVerboseLogEnabled()
     {
         return m_bIsVerboseLogEnabled;
+    }
+
+    /**
+     * Is the server is Paper server?
+     *
+     * @return true if the server is Paper server, false else.
+     */
+    public boolean isServerIsPaper()
+    {
+        return m_bIsPaper;
     }
 
     /**
@@ -83,6 +100,7 @@ public class WorldGuardInteractExt extends JavaPlugin
             if (isVerboseLogEnabled())
             {
                 getLogger().info("WorldGuardInteractExt activated!");
+                getLogger().info("Running server types: " + Bukkit.getServer().getName());
             }
         }
         m_interactionManager.onEnable();

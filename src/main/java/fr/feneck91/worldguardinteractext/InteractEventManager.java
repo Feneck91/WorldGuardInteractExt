@@ -2,11 +2,9 @@ package fr.feneck91.worldguardinteractext;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
-import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.block.BlockIgniteEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 
@@ -188,6 +186,16 @@ public class InteractEventManager implements Listener
         public void addEventInfos(EventInfos _eventInfos)
         {
             m_lstEvents.add(_eventInfos);
+        }
+
+        /**
+         * Check if the list of event is empty or not.
+         *
+         * @return true if no events are to process, false else.
+         */
+        public boolean isEventsEmpty()
+        {
+            return m_lstEvents.isEmpty();
         }
 
         /**
@@ -552,13 +560,40 @@ public class InteractEventManager implements Listener
     //=====================================================================================================//
 
     /**
+     * A player has join the game.
+     * <p>
+     * Check if the player is Bedrock (using Geyser) or Java version.
+     * </p>
+     *
+     * @param _event Event.
+     */
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent _event)
+    {
+        boolean bIsBedrock = AMaterialManager.onPlayerJoin(_event.getPlayer());
+        if (getPlugin().isVerboseLogEnabled())
+        {
+            getPlugin().getLogger().info("Player " + _event.getPlayer().getName() + " has entered the game - " +
+                (
+                    bIsBedrock
+                        ? "(Bedrock edition)"
+                        : "(Java edition)"
+                ));
+        }
+    }
+
+    /**
+     * A player has leave the game.
+     * <p>
      * Clear all events interaction infos for the player that leave the game.
+     * </p>
      *
      * @param _event Event.
      */
     @EventHandler
     public void onPlayerLeave(PlayerQuitEvent _event)
     {
+        AMaterialManager.onPlayerLeave(_event.getPlayer());
         if (getPlugin().isVerboseLogEnabled())
         {
             getPlugin().getLogger().info("Player " + _event.getPlayer().getName() + " has left the game");
@@ -584,20 +619,35 @@ public class InteractEventManager implements Listener
     {
         if (_event != null)
         {
-            clearInteractEventsInfos(_event.getPlayer());
-            // Only if WorldGuard has canceled the interaction, else do nothing
-            Block block = _event.getClickedBlock();
-            if (block != null)
+            boolean bManagePlayerInteraction = true;
+            UUID uuidPlayer = _event.getPlayer().getUniqueId();
+            if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
             {
-                if (_event.getHand() == EquipmentSlot.HAND)
-                {   // Remove 2 call with OFF_HAND
-                    InteractEventManager.InteractEventsInfos interactEventInfos = m_materialConfig.managePlayerInteraction(_event);
-                    if (interactEventInfos != null)
-                    {
-                        m_mapNextPlaceEventBlock.put(_event.getPlayer().getUniqueId(), interactEventInfos);
-                        if (!interactEventInfos.ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+                if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+                {
+                    clearInteractEventsInfos(_event.getPlayer());
+                }
+                else
+                {
+                    bManagePlayerInteraction = false;
+                }
+            }
+            if (bManagePlayerInteraction)
+            {
+                // Only if WorldGuard has canceled the interaction, else do nothing
+                Block block = _event.getClickedBlock();
+                if (block != null)
+                {
+                    if (_event.getHand() == EquipmentSlot.HAND)
+                    {   // Remove 2 call with OFF_HAND
+                        InteractEventManager.InteractEventsInfos interactEventInfos = m_materialConfig.managePlayerInteraction(_event);
+                        if (interactEventInfos != null)
                         {
-                            m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                            m_mapNextPlaceEventBlock.put(_event.getPlayer().getUniqueId(), interactEventInfos);
+                            if (!interactEventInfos.ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+                            {
+                                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                            }
                         }
                     }
                 }
@@ -670,6 +720,42 @@ public class InteractEventManager implements Listener
                 {
                     m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
                 }
+            }
+        }
+    }
+
+    /**
+     * When a block is broken.
+     *
+     * @param _event The event.
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onBlockBreakEventLowest(BlockBreakEvent _event)
+    {
+        UUID uuidPlayer = _event.getPlayer().getUniqueId();
+        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        {
+            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+            {
+                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+            }
+        }
+    }
+
+    /**
+     * When a block is broken.
+     *
+     * @param _event The event.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onBlockBreakEventHighest(BlockBreakEvent _event)
+    {
+        UUID uuidPlayer = _event.getPlayer().getUniqueId();
+        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        {
+            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+            {
+                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
             }
         }
     }
@@ -765,42 +851,6 @@ public class InteractEventManager implements Listener
                 {
                     m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
                 }
-            }
-        }
-    }
-
-    /**
-     * When a block is broken.
-     *
-     * @param _event The event.
-     */
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
-    public void onBlockBreakEventLowest(BlockBreakEvent _event)
-    {
-        UUID uuidPlayer = _event.getPlayer().getUniqueId();
-        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
-        {
-            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
-            {
-                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
-            }
-        }
-    }
-
-    /**
-     * When a block is broken.
-     *
-     * @param _event The event.
-     */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onBlockBreakEventHighest(BlockBreakEvent _event)
-    {
-        UUID uuidPlayer = _event.getPlayer().getUniqueId();
-        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
-        {
-            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
-            {
-                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
             }
         }
     }

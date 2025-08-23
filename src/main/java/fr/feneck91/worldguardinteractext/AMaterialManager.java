@@ -8,11 +8,15 @@ import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerItemBreakEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -105,6 +109,25 @@ public abstract class AMaterialManager  implements IMaterialManager
     private final WorldGuardInteractExt m_plugin;
 
     /**
+     * Map of players to record player that are on Jave / Bedrock.
+     * <p>
+     * Used to record if player is from Minecraft Bedrock or Java version.
+     * Key is the player UUID.
+     * </p>
+     */
+    private static Map<UUID, Boolean> m_mapPlayerIsBedrock = null;
+
+    /**
+     * Floodgate api class to use Floodgate.
+     */
+    private static Class<?> m_apiFloodgateClass = null;
+
+    /**
+     * Floodgate api method to know if player is a Bedrock player.
+     */
+    private static Object m_apiFloodgateMethod = null;
+
+    /**
      * Constructor.
      *
      * @param _plugin Plugin, used to access logger ot other things.
@@ -122,6 +145,137 @@ public abstract class AMaterialManager  implements IMaterialManager
     public WorldGuardInteractExt getPlugin()
     {
         return m_plugin;
+    }
+
+    /**
+     * A player join the server.
+     *
+     * @param _player Player, must not be null.
+     * @return true is player is Bedrock edition, false else (Java edition).
+     */
+    public static boolean onPlayerJoin(Player _player)
+    {
+        boolean bIsBedrock = false;
+
+        if (m_mapPlayerIsBedrock == null)
+        {   // Initialize Bedrock API
+            m_mapPlayerIsBedrock = new HashMap<UUID, Boolean>();
+
+            // Check if Floodgate is present or not
+            if (Bukkit.getPluginManager().getPlugin("floodgate") != null)
+            {
+                try
+                {
+                    m_apiFloodgateClass = Class.forName("org.geysermc.floodgate.api.FloodgateApi");
+                    m_apiFloodgateMethod = m_apiFloodgateClass.getMethod("getInstance").invoke(null);
+                }
+                catch (Exception _ex)
+                {   // Floodgate API not available : suppose it's a Java player
+                }
+            }
+        }
+
+        if (m_apiFloodgateClass != null && m_apiFloodgateMethod != null)
+        {
+            try
+            {
+                bIsBedrock = (boolean) m_apiFloodgateClass.getMethod("isFloodgatePlayer", java.util.UUID.class).invoke(m_apiFloodgateMethod, _player.getUniqueId());
+            }
+            catch (Exception _ex)
+            {   // Floodgate API not available : suppose it's a Java player
+            }
+        }
+        m_mapPlayerIsBedrock.putIfAbsent(_player.getUniqueId(), bIsBedrock);
+
+        // Return bedrock computation flag
+        return bIsBedrock;
+    }
+
+    /**
+     * A player leave the server.
+     *
+     * @param _player Player, must not be null.
+     */
+    public static void onPlayerLeave(Player _player)
+    {
+        m_mapPlayerIsBedrock.remove(_player.getUniqueId());
+    }
+
+    /**
+     * Is the player is on Bedrock game?
+     *
+     * @param _player Player, if null return false.
+     * @return true if the player is Bedrock edition, false else (or if player is null)  (Java edition).
+     */
+    public static boolean isPlayerIsBedrock(Player _player)
+    {
+        return _player != null && m_mapPlayerIsBedrock.get(_player.getUniqueId());
+    }
+
+    /**
+     * Is the plugin activated for player.
+     *
+     * @param _player Player, must not be null.
+     * @return true if the player is not operator and is in survival mode.
+     */
+    public static boolean isPluginActivatedForPlayerMode(Player _player)
+    {
+        return    _player != null
+               && _player.getGameMode() != GameMode.CREATIVE
+               && _player.getGameMode() != GameMode.SPECTATOR
+               && !_player.isOp();
+    }
+
+    /**
+     * Apply damage for an item.
+     * <p>
+     *     Check if the item is not breakable, and if the item is 0 durability, it's remove item.
+     *     This is used only when player is Bedrock and the plugin must manage event manually.
+     * </p>
+     * @param _hand Hand used (to retrieve stack item for good hand).
+     * @param _player Player.
+     */
+    public static void applyDamage(EquipmentSlot _hand, Player _player)
+    {
+        if (_hand != null)
+        {
+            ItemStack stackItem = (_hand == EquipmentSlot.HAND)
+                ? _player.getInventory().getItemInMainHand()
+                : _player.getInventory().getItemInOffHand();
+
+            if (stackItem.getItemMeta() instanceof org.bukkit.inventory.meta.Damageable metaDamageable)
+            {
+                // Don't damage item if it is Unbreakable
+                if (!metaDamageable.isUnbreakable())
+                {
+                    int iDamage = metaDamageable.getDamage();
+                    int unbreaking = stackItem.getEnchantmentLevel(Enchantment.DURABILITY);
+                    boolean bIsShouldDamage = (unbreaking <= 0) || (ThreadLocalRandom.current().nextInt(unbreaking + 1) == 0);
+                    if (bIsShouldDamage)
+                    {
+                        iDamage += 1;
+                        if (iDamage >= stackItem.getType().getMaxDurability())
+                        {   // The tool is broken : remove it from hand and run event
+                            if (_hand == EquipmentSlot.HAND)
+                            {
+                                _player.getInventory().setItemInMainHand(null);
+                            }
+                            else
+                            {
+                                _player.getInventory().setItemInOffHand(null);
+                            }
+                            Bukkit.getPluginManager().callEvent(new PlayerItemBreakEvent(_player, stackItem.clone()));
+                            _player.playSound(_player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
+                        }
+                        else
+                        {
+                            metaDamageable.setDamage(iDamage);
+                            stackItem.setItemMeta(metaDamageable);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -217,7 +371,6 @@ public abstract class AMaterialManager  implements IMaterialManager
     {
         ArrayList<Object> listMaterialInformation = (ArrayList<Object>) _mapItems.get(_strKeyName);
         List<MaterialInformation> listMaterialsInformations = new ArrayList<MaterialInformation>();
-        Map<String, String> dicProperties = new HashMap<String, String>();
 
         // Read all materials
         if (listMaterialInformation.isEmpty())
@@ -245,6 +398,7 @@ public abstract class AMaterialManager  implements IMaterialManager
 
             for (Object oItem : listMaterialInformation)
             {
+                Map<String, String> dicProperties = new HashMap<String, String>();
                 if (oItem instanceof String strItemNameToFind)
                 {   // Only a material name
                     itemMaterialFound = Material.getMaterial(strItemNameToFind);

@@ -143,7 +143,7 @@ public class MaterialConfig
                 block = playerTakeLecternBookEvent.getLectern().getBlock();
             }
 
-            if (player != null && block != null)
+            if (block != null && AMaterialManager.isPluginActivatedForPlayerMode(player))
             {
                 World world = player.getWorld();
                 RegionManager manager = container.get(BukkitAdapter.adapt(world));
@@ -163,6 +163,14 @@ public class MaterialConfig
                             interactEventInfos = materialManager.managePlayerInteraction(_event, block, world, strBlocRegionName);
                             if (interactEventInfos != null)
                             {
+                                if (interactEventInfos.isEventsEmpty())
+                                {   // If here, the event is processed and nothing should be done
+                                    interactEventInfos = null;
+                                }
+                                else if (getPlugin().isVerboseLogEnabled())
+                                {
+                                    getPlugin().getLogger().info("Accepted event for player '" + player.getName() + "' => " + materialManager.getMaterialType() + " / Event = " + _event.getClass().getSimpleName());
+                                }
                                 break;
                             }
                         }
