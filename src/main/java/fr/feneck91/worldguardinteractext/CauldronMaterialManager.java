@@ -14,6 +14,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.PotionMeta;
@@ -73,6 +75,28 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
          * Message displayed to the user if he has no permissions to empty a cauldron.
          */
         public String m_strEmptyForbiddenMessage;
+
+        /**
+         * Protect cauldron from being destroyed.
+         * By default, is true.
+         */
+        public boolean m_bProtectCauldron;
+
+        /**
+         * Message displayed to the user if he try to destroy the cauldron.
+         */
+        public String m_strProtectCauldronForbiddenMessage;
+
+        /**
+         * Protect cauldron area from block placing.
+         * By default, is true.
+         */
+        public boolean m_bProtectBlockPlace;
+
+        /**
+         * Message displayed to the user if he tries to destroy the cauldron.
+         */
+        public String m_strProtectCauldronBlockPlaceMessage;
     };
 
     /**
@@ -210,6 +234,10 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                 _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no material found for at least one of both fill / empty, ignored!");
                 // bRet = false; No, not a critical error, just ignore __CAULDRON__ configuration
             }
+
+            //
+            // Force forbidden + messages
+            //
             boolean bForceForbidden = false;
             if (_mapItems.get("force_forbidden") instanceof Boolean booleanValue)
             {
@@ -226,6 +254,37 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                 strEmptyForbiddenMessage = ChatColor.translateAlternateColorCodes('&', (String) _mapItems.get("empty_forbidden_message"));
                 _logger.sendMessage("Configuration " + getMaterialType() + ": forbidden message (empty) = '" +( (strEmptyForbiddenMessage.isEmpty()) ? "<not defined>" : strEmptyForbiddenMessage) + "'");
             }
+
+            //
+            // Cauldron protection + message
+            //
+            boolean bProtectCauldron = true;
+            if (_mapItems.get("protect_cauldron") instanceof Boolean booleanValue)
+            {
+                bProtectCauldron = booleanValue;
+            }
+            String strProtectCauldronForbiddenMessage = "";
+            if (bProtectCauldron && _mapItems.get("protect_cauldron_forbidden_message") instanceof String stringValue)
+            {   // Forbidden for destroy the cauldron
+                strProtectCauldronForbiddenMessage = ChatColor.translateAlternateColorCodes('&', stringValue);
+                _logger.sendMessage("Configuration " + getMaterialType() + ": protect cauldron forbidden message = '" +( (strProtectCauldronForbiddenMessage.isEmpty()) ? "<not defined>" : strProtectCauldronForbiddenMessage) + "'");
+            }
+
+            //
+            // Cauldron area place block protection + message
+            //
+            boolean bProtectBlockPlace = true;
+            if (_mapItems.get("protect_block_place") instanceof Boolean booleanValue)
+            {
+                bProtectBlockPlace = booleanValue;
+            }
+            String strProtectCauldronBlockPlaceMessage = null;
+            if (bProtectBlockPlace && _mapItems.get("protect_block_place_forbidden_message") instanceof String stringValue)
+            {   // Forbidden for destroy the cauldron
+                strProtectCauldronBlockPlaceMessage = ChatColor.translateAlternateColorCodes('&', stringValue);
+                _logger.sendMessage("Configuration " + getMaterialType() + ": protect cauldron area from placing block forbidden message = '" +( (strProtectCauldronBlockPlaceMessage.isEmpty()) ? "<not defined>" : strProtectCauldronBlockPlaceMessage) + "'");
+            }
+
             if (lstRegions == null || lstRegions.isEmpty())
             {
                 _logger.sendWarningMessage("Configuration " + getMaterialType() + ": no region found, ignored!");
@@ -233,13 +292,18 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
             else
             {   // All is OK, add it
                 InformationCauldronMaterial infos = new InformationCauldronMaterial();
-                infos.m_lstMaterials                = new HashSet<>(listMaterial);
-                infos.m_lstFillMaterials            = lstFillMaterials;
-                infos.m_lstEmptyMaterials           = lstEmptyMaterials;
-                infos.m_lstRegions                  = lstRegions;
-                infos.m_bForceForbidden             = bForceForbidden;
-                infos.m_strFillForbiddenMessage     = strFillForbiddenMessage;
-                infos.m_strEmptyForbiddenMessage    = strEmptyForbiddenMessage;
+                infos.m_lstMaterials                        = new HashSet<>(listMaterial);
+                infos.m_lstFillMaterials                    = lstFillMaterials;
+                infos.m_lstEmptyMaterials                   = lstEmptyMaterials;
+                infos.m_lstRegions                          = lstRegions;
+                infos.m_bForceForbidden                     = bForceForbidden;
+                infos.m_strFillForbiddenMessage             = strFillForbiddenMessage;
+                infos.m_strEmptyForbiddenMessage            = strEmptyForbiddenMessage;
+                infos.m_bProtectCauldron                    = bProtectCauldron;
+                infos.m_strProtectCauldronForbiddenMessage  = strProtectCauldronForbiddenMessage;
+                infos.m_bProtectBlockPlace                  = bProtectBlockPlace;
+                infos.m_strProtectCauldronBlockPlaceMessage = strProtectCauldronBlockPlaceMessage;
+
                 // To optimize time search, combine world name with material
                 for (String strWorldAndRegionName : lstRegions)
                 {
@@ -252,6 +316,12 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                             bRet = false;
                             break;
                         }
+                        m_mapInformationCauldronMaterial.put(strKey, infos);
+                    }
+                    if (infos.m_bProtectBlockPlace)
+                    {   // Add AIR into material to prevent placing block
+                        String strKey = MakeKey(strWorldAndRegionName, Material.AIR);
+                        // No check m_mapInformationCauldronMaterial.containsKey(strKey), not needed: Material.AIR is not allowed for player configuration, added once only
                         m_mapInformationCauldronMaterial.put(strKey, infos);
                     }
                     if (!bRet)
@@ -344,113 +414,184 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
 
                 }
             }
-        }
-        else
-        {
-            itemHand = null;
-        }
+            if (itemHand != null && bIsHandMaterialOk)
+            {   // If nothing in hand, nothing to do
+                String strKey = MakeKey(_world, _strCurrentPlayerRegionName, _block.getType());
+                if (m_mapInformationCauldronMaterial.containsKey(strKey))
+                {
+                    InformationCauldronMaterial infosCauldron = m_mapInformationCauldronMaterial.get(strKey);
+                    Component translatedForbiddenMessage = null;
 
-        if (itemHand != null && bIsHandMaterialOk)
-        {   // If nothing in hand, nothing to do
-            String strKey = MakeKey(_world, _strCurrentPlayerRegionName, _block.getType());
+                    // Check if _block (cauldron) is full or not
+                    boolean bIsCauldronIsFull = false;
+                    BlockData blocData = _block.getBlockData();
+                    if (blocData instanceof Levelled blocDataLevelled)
+                    {
+                        bIsCauldronIsFull = blocDataLevelled.getLevel() == blocDataLevelled.getMaximumLevel();
+                    }
+
+                    // Check if event is allowed
+                    boolean bIsEventAllowed = false;    // Will cancel / uncancel event to let player action work
+                    boolean bIsEventForbidden = false;  // Will cancel / ignore event to forbid player action (and display forbidden message)
+                    // Check if empty cauldron is clicked
+                    if (_block.getType() == Material.CAULDRON)
+                    {   // Filling an empty the cauldron
+                        if (infosCauldron.m_lstFillMaterials.stream().anyMatch(item -> itemHand.getType().equals(item.getMaterial())))
+                        {   // Ok material is accepted
+                            // Event is accepted if hand have WATER POTION or other (LAVA_BUCKET, WATER_BUCKET, POWDER_SNOW_BUCKET)
+                            // that can fill the cauldron
+                            bIsEventAllowed = (bIsHandIsWaterPotion || itemHand.getType() != Material.POTION);
+                        }
+                        else if (infosCauldron.m_bForceForbidden && itemHand.getType() != Material.GLASS_BOTTLE)
+                        {
+                            bIsEventForbidden = true;
+                            if (infosCauldron.m_strFillForbiddenMessage != null && !infosCauldron.m_strFillForbiddenMessage.isEmpty())
+                            {
+                                Map<String, Component> placeholders = Map.of(
+                                "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
+                                "hand_material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
+                                );
+                                translatedForbiddenMessage = formatPlaceHolders(infosCauldron.m_strFillForbiddenMessage, placeholders);
+                            }
+                        }
+                    }
+                    else if (   (_block.getType() == Material.WATER_CAULDRON && !bIsCauldronIsFull && bIsHandIsWaterPotion)
+                             || (   itemHand.getType() == Material.WATER_BUCKET
+                                 || itemHand.getType() == Material.LAVA_BUCKET
+                                 || itemHand.getType() == Material.POWDER_SNOW_BUCKET))
+                    {   // May be Fill if Cauldron is water
+                        // Only if the item in hand is WATER POTION and block is water cauldron : try to fill
+                        // If cauldron hand is Material.xxxxx_BUCKET it is allowed too
+                        // If cauldron is full, don't allowed only if it is a water potion!
+                        // If material is not allowed by configuration, don't allowed!
+                        bIsEventAllowed = infosCauldron.m_lstFillMaterials.stream().anyMatch(item -> itemHand.getType().equals(item.getMaterial()));
+                        if (infosCauldron.m_bForceForbidden && !bIsEventAllowed)
+                        {
+                            bIsEventForbidden = true;
+                            if (infosCauldron.m_strFillForbiddenMessage != null && !infosCauldron.m_strFillForbiddenMessage.isEmpty())
+                            {
+                                Map<String, Component> placeholders = Map.of(
+                                "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
+                                "hand_material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
+                                );
+                                translatedForbiddenMessage = formatPlaceHolders(infosCauldron.m_strFillForbiddenMessage, placeholders);
+                            }
+                        }
+                    }
+                    else
+                    {   // Emptying the cauldron
+                        if (infosCauldron.m_lstEmptyMaterials.stream().anyMatch(item -> itemHand.getType().equals(item.getMaterial())))
+                        {   // Emptying the cauldron
+                            // Here, we are sure that _block is a cauldron, else we cannot go there or error into configuration reading
+                            // because this condition is OK : m_mapInformationsCauldronMaterial.containsKey(key)
+                            // so, don't check : _block.getType() == Material.LAVA_CAULDRON / Material.WATER_CAULDRON / Material.POWDER_SNOW_CAULDRON
+                            // Empty material is OK, allow event. If user allow emptying Minecraft will let to do, else it will forbid
+                            bIsEventAllowed = true;
+                        }
+                        else if (   infosCauldron.m_bForceForbidden
+                                 && (   _block.getType() == Material.WATER_CAULDRON
+                                     || (   itemHand.getType() != Material.GLASS_BOTTLE
+                                         && itemHand.getType() != Material.POTION
+                                        )
+                                    )
+                                )
+                        {
+                            bIsEventForbidden = true;
+                            if (infosCauldron.m_strEmptyForbiddenMessage != null && !infosCauldron.m_strEmptyForbiddenMessage.isEmpty())
+                            {
+                                Map<String, Component> placeholders = Map.of(
+                                "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
+                                "hand_material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
+                                );
+                                translatedForbiddenMessage = formatPlaceHolders(infosCauldron.m_strEmptyForbiddenMessage, placeholders);
+                            }
+                        }
+                    }
+                    if (bIsEventAllowed || bIsEventForbidden)
+                    {   // Allow / Forbidden event
+                        Consumer<Event> lambdaActionEventForbidden = null; // Event to call if event is forbidden at the last event
+                        if (translatedForbiddenMessage != null)
+                        {
+                            BukkitPlayer bukkitPlayer = BukkitAdapter.adapt(player);
+                            Component compMessage = translatedForbiddenMessage;
+                            lambdaActionEventForbidden = (_lambdaEvent) ->
+                            {
+                                if (_lambdaEvent instanceof Cancellable event)
+                                {
+                                    if (event.isCancelled())
+                                    {   // Only if another plugin has not uncancelled the event
+                                        bukkitPlayer.print(compMessage);
+                                    }
+                                }
+                            };
+                        }
+                        interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, bIsEventForbidden ? InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore : InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, lambdaActionEventForbidden));
+                    }
+                }
+            }
+            else
+            {
+                // Here, manage cauldron break
+                String strKey = MakeKey(_world, _strCurrentPlayerRegionName, _block.getType());
+                if (m_mapInformationCauldronMaterial.containsKey(strKey))
+                {
+                    InformationCauldronMaterial infosCauldron = m_mapInformationCauldronMaterial.get(strKey);
+                    Material handMaterial = itemHand == null
+                        ? Material.AIR
+                        : itemHand.getType();
+
+                    if (infosCauldron.m_bProtectCauldron && _block.getType() != Material.AIR)
+                    {   // Manage cauldron protection
+                        interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
+                        Consumer<Event> lambdaActionEventForbidden = null;
+                        if (infosCauldron.m_strProtectCauldronForbiddenMessage != null && !infosCauldron.m_strProtectCauldronForbiddenMessage.isEmpty())
+                        {
+                            BukkitPlayer bukkitPlayer = BukkitAdapter.adapt(player);
+                            Map<String, Component> placeholders = Map.of(
+                                "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
+                                "hand_material", TranslatableComponent.of(handMaterial.getTranslationKey()));
+                            final Component compMessage = formatPlaceHolders(infosCauldron.m_strProtectCauldronForbiddenMessage, placeholders);
+                            // Event to call if event is forbidden at the last event
+                            lambdaActionEventForbidden = (_lambdaEvent) ->
+                            {
+                                if (_lambdaEvent instanceof Cancellable event)
+                                {
+                                    if (event.isCancelled())
+                                    {   // Only if another plugin has not uncancelled the event
+                                        bukkitPlayer.print(compMessage);
+                                    }
+                                }
+                            };
+                        }
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore, null));
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore,null));
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockBreakEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, lambdaActionEventForbidden));
+                    }
+                }
+            }
+        }
+        else if (_event instanceof BlockPlaceEvent placeBlockEvent)
+        {
+            // Here, manage place block into the cauldron area
+            String strKey = MakeKey(_world, _strCurrentPlayerRegionName, Material.AIR); // For BlockPlaceEvent, check with AIR, not with _block.getType()
             if (m_mapInformationCauldronMaterial.containsKey(strKey))
             {
                 InformationCauldronMaterial infosCauldron = m_mapInformationCauldronMaterial.get(strKey);
-                Component translatedForbiddenMessage = null;
-
-                // Check if _block (cauldron) is full or not
-                boolean bIsCauldronIsFull = false;
-                BlockData blocData = _block.getBlockData();
-                if (blocData instanceof Levelled blocDataLevelled)
+                if (infosCauldron.m_bProtectBlockPlace)
                 {
-                    bIsCauldronIsFull = blocDataLevelled.getLevel() == blocDataLevelled.getMaximumLevel();
-                }
-
-                // Check if event is allowed
-                boolean bIsEventAllowed = false;    // Will cancel / uncancel event to let player action work
-                boolean bIsEventForbidden = false;  // Will cancel / ignore event to forbid player action (and display forbidden message)
-                // Check if empty cauldron is clicked
-                if (_block.getType() == Material.CAULDRON)
-                {   // Filling an empty the cauldron
-                    if (infosCauldron.m_lstFillMaterials.stream().anyMatch(item -> itemHand.getType().equals(item.getMaterial())))
-                    {   // Ok material is accepted
-                        // Event is accepted if hand have WATER POTION or other (LAVA_BUCKET, WATER_BUCKET, POWDER_SNOW_BUCKET)
-                        // that can fill the cauldron
-                        bIsEventAllowed = (bIsHandIsWaterPotion || itemHand.getType() != Material.POTION);
-                    }
-                    else if (infosCauldron.m_bForceForbidden && itemHand.getType() != Material.GLASS_BOTTLE)
-                    {
-                        bIsEventForbidden = true;
-                        if (infosCauldron.m_strFillForbiddenMessage != null && !infosCauldron.m_strFillForbiddenMessage.isEmpty())
-                        {
-                            Map<String, Component> placeholders = Map.of(
-                            "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
-                            "hand_material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
-                            );
-                            translatedForbiddenMessage = formatPlaceHolders(infosCauldron.m_strFillForbiddenMessage, placeholders);
-                        }
-                    }
-                }
-                else if (   (_block.getType() == Material.WATER_CAULDRON && !bIsCauldronIsFull && bIsHandIsWaterPotion)
-                         || (   itemHand.getType() == Material.WATER_BUCKET
-                             || itemHand.getType() == Material.LAVA_BUCKET
-                             || itemHand.getType() == Material.POWDER_SNOW_BUCKET))
-                {   // May be Fill if Cauldron is water
-                    // Only if the item in hand is WATER POTION and block is water cauldron : try to fill
-                    // If cauldron hand is Material.xxxxx_BUCKET it is allowed too
-                    // If cauldron is full, don't allowed only if it is a water potion!
-                    // If material is not allowed by configuration, don't allowed!
-                    bIsEventAllowed = infosCauldron.m_lstFillMaterials.stream().anyMatch(item -> itemHand.getType().equals(item.getMaterial()));
-                    if (infosCauldron.m_bForceForbidden && !bIsEventAllowed)
-                    {
-                        bIsEventForbidden = true;
-                        if (infosCauldron.m_strFillForbiddenMessage != null && !infosCauldron.m_strFillForbiddenMessage.isEmpty())
-                        {
-                            Map<String, Component> placeholders = Map.of(
-                            "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
-                            "hand_material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
-                            );
-                            translatedForbiddenMessage = formatPlaceHolders(infosCauldron.m_strFillForbiddenMessage, placeholders);
-                        }
-                    }
-                }
-                else
-                {   // Emptying the cauldron
-                    if (infosCauldron.m_lstEmptyMaterials.stream().anyMatch(item -> itemHand.getType().equals(item.getMaterial())))
-                    {   // Emptying the cauldron
-                        // Here, we are sure that _block is a cauldron, else we cannot go there or error into configuration reading
-                        // because this condition is OK : m_mapInformationsCauldronMaterial.containsKey(key)
-                        // so, don't check : _block.getType() == Material.LAVA_CAULDRON / Material.WATER_CAULDRON / Material.POWDER_SNOW_CAULDRON
-                        // Empty material is OK, allow event. If user allow emptying Minecraft will let to do, else it will forbid
-                        bIsEventAllowed = true;
-                    }
-                    else if (   infosCauldron.m_bForceForbidden
-                             && (   _block.getType() == Material.WATER_CAULDRON
-                                 || (   itemHand.getType() != Material.GLASS_BOTTLE
-                                     && itemHand.getType() != Material.POTION
-                                    )
-                                )
-                            )
-                    {
-                        bIsEventForbidden = true;
-                        if (infosCauldron.m_strEmptyForbiddenMessage != null && !infosCauldron.m_strEmptyForbiddenMessage.isEmpty())
-                        {
-                            Map<String, Component> placeholders = Map.of(
-                            "cauldron", TranslatableComponent.of(_block.getTranslationKey()),
-                            "hand_material", TranslatableComponent.of(itemHand.getType().getTranslationKey())
-                            );
-                            translatedForbiddenMessage = formatPlaceHolders(infosCauldron.m_strEmptyForbiddenMessage, placeholders);
-                        }
-                    }
-                }
-                if (bIsEventAllowed || bIsEventForbidden)
-                {   // Allow / Forbidden event
-                    Consumer<Event> _lambdaActionEventForbidden = null; // Event to call if event is forbidden at the last event
-                    if (translatedForbiddenMessage != null)
+                    player = placeBlockEvent.getPlayer();
+                    interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
+                    Consumer<Event> lambdaActionEventForbidden = null;
+                    if (infosCauldron.m_strProtectCauldronBlockPlaceMessage != null && !infosCauldron.m_strProtectCauldronBlockPlaceMessage.isEmpty())
                     {
                         BukkitPlayer bukkitPlayer = BukkitAdapter.adapt(player);
-                        Component compMessage = translatedForbiddenMessage;
-                        _lambdaActionEventForbidden = (_lambdaEvent) ->
+                        Map<String, Component> placeholders = Map.of(
+                            "hand_material", TranslatableComponent.of(_block.getTranslationKey()));
+                        final Component compMessage = formatPlaceHolders(infosCauldron.m_strProtectCauldronBlockPlaceMessage, placeholders);
+                        // Event to call if event is forbidden at the last event
+                        lambdaActionEventForbidden = (_lambdaEvent) ->
                         {
                             if (_lambdaEvent instanceof Cancellable event)
                             {
@@ -461,9 +602,7 @@ public class CauldronMaterialManager extends AMaterialManager implements IMateri
                             }
                         };
                     }
-                    interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
-                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
-                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, bIsEventForbidden ? InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore : InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel, _lambdaActionEventForbidden));
+                    interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, lambdaActionEventForbidden));
                 }
             }
         }

@@ -3,13 +3,20 @@ This plugin allow to add more interaction with block using WorldGuard.
 
 Where you are using WorldGuard, if you often use block-break to deny you will not be able to do some things:
   - Extinguish or inflame camp fire.
-  - Get / put water / snow from cauldron.
+  - Get / put water / snow into cauldron.
   - Put book on lectern.
-  - Plant / get food from / to fields.
+  - Prevent block breaking.
+  - Plant / get food from / to fields (not yet implemented).
   - etc...
 
-If you let block-break to allow, you will able to do some action on these blocks but also break the blocks into the area.
+In WorldGuard, if you let block-break to allow, you will able to do some action on these blocks but also break the blocks into the area.
 This is why this plugin was created, to add more interaction rules by disable temporary the WorldGuard rules for some interaction only.
+
+# Commands:
+- wgi reload: reload WorldGuardInteractExt configuration 
+- wgi materials <material>:  
+  - <material> : __CAULDRON__, __CAMPFIRE__, __LECTERN__, __BLOCKBREAK__
+
 
 # Versions history:
   - __1.0__ : 2025/08/08
@@ -34,10 +41,17 @@ This is why this plugin was created, to add more interaction rules by disable te
     Allow to use place holder to display material / block to the user into message (explanation into config.yaml).
   - __4.0__ : 2025/08/16
     This version allow to manage __breaking blocks__ : 
-      - Choose the type of blocks allowed to be broken .
+      - Choose the type of blocks allowed to be broken.
       - Choose tools allowed to break the blocks.
     This allow to break block even the region is protected from breaking blocks with WorldGuard.  
     Bug fix: compute regions from block location instead of player's one.
+  - __4.1__ : 2026/04/12
+    This version fix some bugs for cauldron:
+      - Fix placing / breaking block for cauldron.
+        It is not possible to deny block breaking / placing into WorldGuard configuration and let cauldron working fine with this plugin.
+        A workaround has been implemented, see the config file that contains explanations. 
+      - Prevent cauldron to be break and add an error message if needed.
+      - Prevent block to be placed in cauldron area and add an error message if needed.
 
 # The configuration file (config.yaml):
 ```yaml
@@ -61,7 +75,7 @@ enable_verbose_logs: false
 items:
   [
     {
-      # Specify type of extended interection: here it is campfire
+      # Specify type of extended interaction: here it is campfire
       type: "__CAMPFIRE__",
       # name : must be only CAMPFIRE or SOUL_CAMPFIRE or both
       names: ["CAMPFIRE", "SOUL_CAMPFIRE"],
@@ -86,7 +100,7 @@ items:
       extinguish: [".+_SHOVEL"],
     },
     {
-      # Specify type of extended interection: here it is lectern
+      # Specify type of extended interaction: here it is lectern
       type: "__LECTERN__",
       # name : must be only LECTERN
       names: ["LECTERN"],
@@ -110,7 +124,35 @@ items:
       remove_forbidden_message: "&eYou cannot remove <removed_book> from the <lectern>!"
     },
     {
-      # Specify type of extended interection: here it is cauldron
+      # Specify type of extended interaction: here it is cauldron
+      #
+      # It is not possible for this plugin to override WorldGuard protection for the cauldron, so filling and emptying the cauldron is not possible if
+      # the region is protected from block-break and block-place.
+      # To make it work, create a region around the cauldron you want manage. It must be exactly one block on x, z and 2 blocs in y and have one AIR block
+      # over the cauldron (with non AIR block over the cauldron you cannot fill / empty the cauldron).
+      # example: if cauldron is 100, 152, 92 you must create a region with high priority of the protected region like:
+      # caudron_1:
+      #   min:
+      #   {
+      #     x: 100,
+      #     y: 152,
+      #     z: 92
+      #   }
+      #   max:
+      #   {
+      #     x: 100,
+      #     y: 153,
+      #     z: 92
+      #   }
+      #   flags:
+      #   {
+      #     block-break: allow,
+      #     block-break-group: NON_MEMBERS,
+      #     block-place: allow,
+      #     block-place-group: NON_MEMBERS,
+      #   }
+      #   type: cuboid
+      #   priority: 15
       type: "__CAULDRON__",
       # name : must be only CAUDRON / LAVA_CAULDRON / WATER_CAULDRON / POWDER_SNOW_CAULDRON
       names: ["CAULDRON", "LAVA_CAULDRON", "WATER_CAULDRON", "POWDER_SNOW_CAULDRON"],
@@ -132,13 +174,27 @@ items:
       #                          with its with own flags,
       # force_forbidden = true: If action is not allowed, the action is cancelled and a forbidden message is displayed.
       force_forbidden: true,
+      # Messages to display to the user when fill / empty is not allowed
       # Allow to use <cauldron> for the cauldron name (automatically translated).
       # Allow to use <hand_material> for the name of the item in the player's hand (automatically translated).
       fill_forbidden_message: "&eYou cannot fill this <cauldron> with <hand_material>!",
       empty_forbidden_message: "&eYou cannot empty this <cauldron> with <hand_material>!",
+      # protect_cauldron = false: Let the user break the cauldron (default).
+      # protect_cauldron = true: Prevent the user break the cauldron, in this case the protect_cauldron_message is displayed if not empty.
+      protect_cauldron: true,
+      # Allow to use <cauldron> for the cauldron name (automatically translated).
+      # Allow to use <hand_material> for the name of the item in the player's hand (automatically translated).
+      protect_cauldron_forbidden_message: "&eYou cannot break this <cauldron> with <hand_material>!",
+      # Messages to display to the user when cauldront break is not allowed.
+      # protect_block_place = false: Let the user place all blocks he wants into the area.
+      # protect_block_place = true: Prevent the user place blocks into the area, in this case the protect_block_place_message is displayed if not empty.
+      protect_block_place: true,
+      # Messages to display to the user block place is not allowed.
+      # Allow to use <hand_material> for the name of the item in the player's hand (automatically translated).
+      protect_block_place_forbidden_message: "&eYou cannot place this <hand_material>!",
     },
     {
-      # Specify type of extended interection: here it is breakable blocs
+      # Specify type of extended interaction: here it is breakable blocs
       type: "__BLOCKBREAK__",
       # name : All block you want. Plugin is not able to validate material type here. It will work only for
       # breakable blocks. Stone for example (names: ["STONE"]).
@@ -156,6 +212,7 @@ items:
       #     Note : You must add color into text if the name / lore has color.
       #            See colors codes: https://minecraft.wiki/w/Formatting_codes
       # Empty list is not allowed.
+      # Example: [{ material : "DIAMOND_PICKAXE", name : "§6Pickaxe of king", lore : "§dThe best king" }],
       tool: [ ],
     }
   ]

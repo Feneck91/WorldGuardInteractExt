@@ -17,7 +17,7 @@ public class WorldGuardInteractExt extends JavaPlugin
     /**
      * Is current server is 'Paper' or 'CraftBukkit/Spigot'.
      */
-    private boolean                         m_bIsPaper;
+    private final boolean                   m_bIsPaper;
 
     /**
      * Is verbose log enabled?

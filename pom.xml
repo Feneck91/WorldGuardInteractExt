@@ -65,12 +65,57 @@
                         </goals>
                         <configuration>
                             <target>
+                                <!-- Compute source file checksums -->
+                                <checksum file="${project.build.directory}/${project.build.finalName}.jar"
+                                          property="src.md5"
+                                          algorithm="MD5"/>
+                                <echo level="info"
+                                      message="Jar file = ${project.build.directory}/${project.build.finalName}.jar / MD5 = ${src.md5}"/>
+
+                                <!--================-->
+                                <!-- Copy to server -->
+                                <!--================-->
                                 <copy file="${project.build.directory}/${project.build.finalName}.jar"
                                       todir="server/plugins/"
-                                      overwrite="true"/>
+                                      overwrite="true"
+                                      failonerror="true"/>
+                                <!-- Compute checksums -->
+                                <checksum file="server/plugins/${project.build.finalName}.jar"
+                                          property="dst1.md5"
+                                          algorithm="MD5"/>
+                                <echo level="info"
+                                      message="Jar file = server/plugins/${project.build.finalName}.jar / MD5 = ${dst1.md5}"/>
+                                <!-- Compare checksum -->
+                                <condition property="copy.success">
+                                    <equals arg1="${src.md5}" arg2="${dst1.md5}"/>
+                                </condition>
+                                <fail unless="copy.success"
+                                      message="[ERROR] Copy to server error: destination file is not updated!"/>
+                                <echo level="info"
+                                      message="[OK] Copy to Server"/>
+
+                                <!--=============-->
+                                <!-- Copy to jar -->
+                                <!--=============-->
                                 <copy file="${project.build.directory}/${project.build.finalName}.jar"
                                       todir="jar/"
-                                      overwrite="true"/>
+                                      overwrite="true"
+                                      failonerror="true"/>
+                                <!-- Compute checksums -->
+                                <checksum file="jar/${project.build.finalName}.jar"
+                                          property="dst2.md5"
+                                          algorithm="MD5"/>
+                                <echo level="info"
+                                      message="Jar file = jar/${project.build.finalName}.jar / MD5 = ${dst2.md5}"/>
+                                <!-- Compare checksum -->
+                                <condition property="copy2.success">
+                                    <equals arg1="${src.md5}" arg2="${dst2.md5}"/>
+                                </condition>
+
+                                <fail unless="copy2.success"
+                                      message="[ERROR] Copy to jar folder error: internal plugin jar folder is not updated!"/>
+                                <echo level="info"
+                                      message="[OK] Copy to internal plugin jar folder"/>
                             </target>
                         </configuration>
                     </execution>
