@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerTakeLecternBookEvent;
 
@@ -141,6 +142,11 @@ public class MaterialConfig
             {
                 player = playerTakeLecternBookEvent.getPlayer();
                 block = playerTakeLecternBookEvent.getLectern().getBlock();
+            }
+            else if (_event instanceof BlockPlaceEvent blockPlaceEvent)
+            {
+                player = blockPlaceEvent.getPlayer();
+                block = blockPlaceEvent.getBlock(); // Is the new block
             }
 
             if (block != null && AMaterialManager.isPluginActivatedForPlayerMode(player))

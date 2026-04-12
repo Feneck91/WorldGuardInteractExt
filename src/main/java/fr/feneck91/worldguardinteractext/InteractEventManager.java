@@ -7,11 +7,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -473,12 +469,12 @@ public class InteractEventManager implements Listener
     private MaterialConfig                          m_materialConfig;
 
     /**
-     * Next PlaceEvent block.
+     * Next event block.
      *
-     * Used to quickly check if PlaceEvent will use this block, to reactivate the cancel event.
+     * Used to quickly check if the next event will be interesting or not for the event, to reactivate the cancel event if needed.
      * Key is the player UUID.
      */
-    private final Map<UUID, InteractEventsInfos>    m_mapNextPlaceEventBlock;
+    private final Map<UUID, InteractEventsInfos>    m_mapNextEvent;
 
     /**
      * Constructor.
@@ -491,7 +487,7 @@ public class InteractEventManager implements Listener
         // Plugin
         m_plugin = _plugin;
         // Initialize event manager
-        m_mapNextPlaceEventBlock = new HashMap<UUID, InteractEventsInfos>();
+        m_mapNextEvent = new HashMap<UUID, InteractEventsInfos>();
         setMaterialConfig(_materialConfig);
     }
 
@@ -538,7 +534,7 @@ public class InteractEventManager implements Listener
         boolean bRet = false;
         if (_player != null)
         {
-            bRet = m_mapNextPlaceEventBlock.remove(_player.getUniqueId()) != null;
+            bRet = m_mapNextEvent.remove(_player.getUniqueId()) != null;
         }
         return bRet;
     }
@@ -621,9 +617,9 @@ public class InteractEventManager implements Listener
         {
             boolean bManagePlayerInteraction = true;
             UUID uuidPlayer = _event.getPlayer().getUniqueId();
-            if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+            if (m_mapNextEvent.containsKey(uuidPlayer))
             {
-                if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+                if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
                 {
                     clearInteractEventsInfos(_event.getPlayer());
                 }
@@ -643,10 +639,10 @@ public class InteractEventManager implements Listener
                         InteractEventManager.InteractEventsInfos interactEventInfos = m_materialConfig.managePlayerInteraction(_event);
                         if (interactEventInfos != null)
                         {
-                            m_mapNextPlaceEventBlock.put(_event.getPlayer().getUniqueId(), interactEventInfos);
+                            m_mapNextEvent.put(_event.getPlayer().getUniqueId(), interactEventInfos);
                             if (!interactEventInfos.ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
                             {
-                                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                                m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
                             }
                         }
                     }
@@ -667,11 +663,11 @@ public class InteractEventManager implements Listener
     public void onPlayerInteractHighest(PlayerInteractEvent _event)
     {
         UUID uuidPlayer = _event.getPlayer().getUniqueId();
-        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        if (m_mapNextEvent.containsKey(uuidPlayer))
         {
-            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+            if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
             {
-                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
             }
         }
     }
@@ -690,11 +686,11 @@ public class InteractEventManager implements Listener
         if (_event.getPlayer() != null)
         {
             UUID uuidPlayer = _event.getPlayer().getUniqueId();
-            if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+            if (m_mapNextEvent.containsKey(uuidPlayer))
             {
-                if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+                if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
                 {
-                    m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                    m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
                 }
             }
         }
@@ -714,11 +710,11 @@ public class InteractEventManager implements Listener
         if (_event.getPlayer() != null)
         {
             UUID uuidPlayer = _event.getPlayer().getUniqueId();
-            if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+            if (m_mapNextEvent.containsKey(uuidPlayer))
             {
-                if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+                if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
                 {
-                    m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                    m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
                 }
             }
         }
@@ -733,11 +729,11 @@ public class InteractEventManager implements Listener
     public void onBlockBreakEventLowest(BlockBreakEvent _event)
     {
         UUID uuidPlayer = _event.getPlayer().getUniqueId();
-        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        if (m_mapNextEvent.containsKey(uuidPlayer))
         {
-            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+            if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
             {
-                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
             }
         }
     }
@@ -751,11 +747,11 @@ public class InteractEventManager implements Listener
     public void onBlockBreakEventHighest(BlockBreakEvent _event)
     {
         UUID uuidPlayer = _event.getPlayer().getUniqueId();
-        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        if (m_mapNextEvent.containsKey(uuidPlayer))
         {
-            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+            if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
             {
-                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
             }
         }
     }
@@ -769,11 +765,23 @@ public class InteractEventManager implements Listener
     public void onBlockPlaceEventLowest(BlockPlaceEvent _event)
     {
         UUID uuidPlayer = _event.getPlayer().getUniqueId();
-        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        if (m_mapNextEvent.containsKey(uuidPlayer))
         {
-            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+            if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
             {
-                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
+            }
+        }
+        else
+        {
+            InteractEventManager.InteractEventsInfos interactEventInfos = m_materialConfig.managePlayerInteraction(_event);
+            if (interactEventInfos != null)
+            {
+                m_mapNextEvent.put(_event.getPlayer().getUniqueId(), interactEventInfos);
+                if (!interactEventInfos.ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+                {
+                    m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
+                }
             }
         }
     }
@@ -787,11 +795,11 @@ public class InteractEventManager implements Listener
     public void onBlockPlaceEventHighest(BlockPlaceEvent _event)
     {
         UUID uuidPlayer = _event.getPlayer().getUniqueId();
-        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        if (m_mapNextEvent.containsKey(uuidPlayer))
         {
-            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+            if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
             {
-                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
             }
         }
     }
@@ -805,11 +813,11 @@ public class InteractEventManager implements Listener
     public void onPlayerBucketEmptyEventLowest(PlayerBucketEmptyEvent _event)
     {
         UUID uuidPlayer = _event.getPlayer().getUniqueId();
-        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        if (m_mapNextEvent.containsKey(uuidPlayer))
         {
-            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
+            if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
             {
-                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
             }
         }
     }
@@ -823,11 +831,11 @@ public class InteractEventManager implements Listener
     public void onPlayerBucketEmptyEventHighest(PlayerBucketEmptyEvent _event)
     {
         UUID uuidPlayer = _event.getPlayer().getUniqueId();
-        if (m_mapNextPlaceEventBlock.containsKey(uuidPlayer))
+        if (m_mapNextEvent.containsKey(uuidPlayer))
         {
-            if (!m_mapNextPlaceEventBlock.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
+            if (!m_mapNextEvent.get(uuidPlayer).ManageEvent(getPlugin(), _event, EventPriority.HIGHEST))
             {
-                m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
             }
         }
     }
@@ -846,10 +854,10 @@ public class InteractEventManager implements Listener
             InteractEventManager.InteractEventsInfos interactEventInfos = m_materialConfig.managePlayerInteraction(_event);
             if (interactEventInfos != null)
             {
-                m_mapNextPlaceEventBlock.put(_event.getPlayer().getUniqueId(), interactEventInfos);
+                m_mapNextEvent.put(_event.getPlayer().getUniqueId(), interactEventInfos);
                 if (!interactEventInfos.ManageEvent(getPlugin(), _event, EventPriority.LOWEST))
                 {
-                    m_mapNextPlaceEventBlock.remove(_event.getPlayer().getUniqueId());
+                    m_mapNextEvent.remove(_event.getPlayer().getUniqueId());
                 }
             }
         }
