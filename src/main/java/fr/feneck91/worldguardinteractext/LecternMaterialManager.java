@@ -34,7 +34,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
     /**
      * Class that manage all information about lectern.
      */
-    private static class InformationCauldronMaterial
+    private static class InformationLecternMaterial
     {
         /**
          * List of allowed regions.
@@ -65,7 +65,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
     /**
      * List of map information.
      */
-    private Map<String, InformationCauldronMaterial> m_mapInformationLecternMaterial;
+    private Map<String, InformationLecternMaterial> m_mapInformationLecternMaterial;
 
     /**
      * Constructor.
@@ -75,7 +75,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
     public LecternMaterialManager(WorldGuardInteractExt _plugin)
     {
         super(_plugin);
-        m_mapInformationLecternMaterial = new HashMap<String, InformationCauldronMaterial>();
+        m_mapInformationLecternMaterial = new HashMap<String, InformationLecternMaterial>();
     }
 
     /**
@@ -189,7 +189,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
             }
             else
             {   // All is OK, add it
-                InformationCauldronMaterial infos = new InformationCauldronMaterial();
+                InformationLecternMaterial infos = new InformationLecternMaterial();
                 infos.m_lstMaterials                = new HashSet<>(listMaterial);
                 infos.m_lstPutMaterials             = lstPutMaterials;
                 infos.m_lstRemoveMaterials          = lstRemoveMaterials;
@@ -269,7 +269,7 @@ public class LecternMaterialManager extends AMaterialManager implements IMateria
         String strKey = MakeKey(_world, _strCurrentPlayerRegionName, _block.getType());
         if (m_mapInformationLecternMaterial.containsKey(strKey))
         {
-            InformationCauldronMaterial infosLectern = m_mapInformationLecternMaterial.get(strKey);
+            InformationLecternMaterial infosLectern = m_mapInformationLecternMaterial.get(strKey);
             // Check if lectern is clicked
             if (_block.getType() == Material.LECTERN)
             {
