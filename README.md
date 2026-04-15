@@ -52,6 +52,9 @@ This is why this plugin was created, to add more interaction rules by disable te
         A workaround has been implemented, see the config file that contains explanations. 
       - Prevent cauldron to be break and add an error message if needed.
       - Prevent block to be placed in cauldron area and add an error message if needed.
+  - __4.2__ : 2026/04/15
+    This version fix some bugs for campfire:
+      - Fix extinguish for Java version.
 
 # The configuration file (config.yaml):
 ```yaml
