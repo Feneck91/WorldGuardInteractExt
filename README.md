@@ -15,7 +15,7 @@ This is why this plugin was created, to add more interaction rules by disable te
 # Commands:
 - wgi reload: reload WorldGuardInteractExt configuration 
 - wgi materials <material>:  
-  - <material> : __CAULDRON__, __CAMPFIRE__, __LECTERN__, __BLOCKBREAK__
+  - <material> : __CAULDRON__, __CAMPFIRE__, __LECTERN__, __BLOCKBREAK__, __FIELD__
 
 
 # Versions history:
@@ -38,12 +38,12 @@ This is why this plugin was created, to add more interaction rules by disable te
       - Allow to forbidden interaction with cauldron or let WorldGuard do the job with its with own flags.
       - Allow to display messages to player when interaction is forbidden (fill / empty).
     Bugs fixes: fix logger for command.
-    Allow to use place holder to display material / block to the user into message (explanation into config.yaml).
+    Allow to use placeholder to display material / block to the user into message (explanation into config.yaml).
   - __4.0__ : 2025/08/16
     This version allow to manage __breaking blocks__ : 
       - Choose the type of blocks allowed to be broken.
       - Choose tools allowed to break the blocks.
-    This allow to break block even the region is protected from breaking blocks with WorldGuard.  
+    This allows to break block even the region is protected from breaking blocks with WorldGuard.  
     Bug fix: compute regions from block location instead of player's one.
   - __4.1__ : 2026/04/12
     This version fix some bugs for cauldron:
@@ -55,6 +55,14 @@ This is why this plugin was created, to add more interaction rules by disable te
   - __4.2__ : 2026/04/15
     This version fix some bugs for campfire:
       - Fix extinguish for Java version.
+  - __5.0__ : 2026/05/16
+    This version allow to manage __fields__ : 
+      - Choose the type of blocks allowed to be tilled.
+      - Choose the type of blocks allowed to be planted.
+      - Choose the type of blocks allowed to be harvested.
+      - Choose the tool to allow harvested and tilled
+    This allows to plant blocks, till dirt blocks, harvested blocks, even the region is protected from breaking blocks with WorldGuard.  
+    Bug fix: fix name and lore tool check into camp fire.
 
 # The configuration file (config.yaml):
 ```yaml
@@ -120,7 +128,7 @@ items:
       # put: [ ".+_BOOK" ],
       # If empty, search all material. If no material remove this entry.
       remove: ["WRITABLE_BOOK", "WRITTEN_BOOK"],
-      # Message to the user if he try to remove a book from Lectern and this action is forbidden (WorldGuard don't display message)
+      # Message to the user if he tries to remove a book from Lectern and this action is forbidden (WorldGuard don't display message)
       # See colors codes: https://minecraft.wiki/w/Formatting_codes
       # Allow to use <lectern> for the lectern name (automatically translated).
       # Allow to use <removed_book> for the name of the book in the lectern that the player want to remove (automatically translated).
@@ -217,6 +225,35 @@ items:
       # Empty list is not allowed.
       # Example: [{ material : "DIAMOND_PICKAXE", name : "§6Pickaxe of king", lore : "§dThe best king" }],
       tool: [ ],
+    },
+    {
+      # Specify type of extended interaction: here it is for fields management
+      type: "__FIELD__",
+      # name : All block you want to allow to till.
+      # Empty list use DIRT, GRASS_BLOCK, ROOTED_DIRT, COARSE_DIRT
+      tillable_names: [],
+      # Empty list use a big list of allowed plantable blocks, not specially on dirt or (hydrated) farmland.
+      # You can use command "wgi materials __FIELD__" to see the whole list.
+      # The blocks used into tillable_names are not taken into account to plant.
+      plantable_names: [],
+      # Empty list use a big list of allowed harvestable blocks (need hoe).
+      # You can use command "wgi materials __FIELD__" to see the whole list.
+      # The blocks used into tillable_names are not taken into account to harvest.
+      harvestable_names: [],
+      # Region : you MUST add world name before region name to make it work
+      # Put  [] to accept all region
+      # regions: ["myworld.region_1", "myworld.region_2"],
+      regions: [], # All regions
+      # Use tool(s), allowed by Minecraft to be able to till or harvest (no tool is needed to plant).
+      # You can specify name / lore (only first item is checked) to accept only a special tool like:
+      #           tool: [ "STONE_HOE", { material : "DIAMOND_HOE", name : "My hoe", lore : "Create by me" } ],
+      #     Note : You can use regex for name into the previous line to accept several tools materials for same
+      #            extra information.
+      #     Note : You must add color into text if the name / lore has color.
+      #            See colors codes: https://minecraft.wiki/w/Formatting_codes
+      # Empty list is allowed, but you will have only all hoe.
+      # Example: [{ material : "DIAMOND_HOE", name : "§6Hoe of king", lore : "§dThe best king" }],
+      tool: [ ]
     }
   ]
-```
+  ```

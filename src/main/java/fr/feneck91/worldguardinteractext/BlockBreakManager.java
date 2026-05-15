@@ -26,7 +26,7 @@ public class BlockBreakManager extends AMaterialManager implements IMaterialMana
     /**
      * Material type that this class manage.
      * <p>
-     * It handles block breaking. There is no way to filter allowed blocks and tools; it is up to the serve
+     * It handles block breaking. There is no way to filter allowed blocks and tools; it is up to the server
      * administrator to choose the appropriate blocks and tools.
      * </p>
      */
@@ -151,7 +151,7 @@ public class BlockBreakManager extends AMaterialManager implements IMaterialMana
                         return bRetValidMaterialInfo;
                     };
 
-            if (    !readMaterial(_logger, false, "tool", _mapItems, lstToolMaterials, true, lamdaCheckIsValidTool))
+            if (!readMaterial(_logger, false, "tool", _mapItems, lstToolMaterials, true, lamdaCheckIsValidTool))
             {
                 bRet = false;
             }
@@ -246,8 +246,8 @@ public class BlockBreakManager extends AMaterialManager implements IMaterialMana
             if (m_mapInformationBlockBreakMaterial.containsKey(strKey))
             {
                 BlockBreakManager.InformationBlockBreakMaterial infosBlockBreak = m_mapInformationBlockBreakMaterial.get(strKey);
-                final Material toolMaterial;   // Can be handItem material or other if handItem is null
-                toolMaterial = itemHand.getType();
+                final Material toolMaterial = itemHand.getType();
+
                 // Create lambda function
                 Predicate<? super MaterialInformation> lambaIsAllowedMaterial = (MaterialInformation item) ->
                 {
@@ -260,7 +260,6 @@ public class BlockBreakManager extends AMaterialManager implements IMaterialMana
                         }
                         else
                         {   // Check properties
-                            bRet = true;
                             if (itemHand.hasItemMeta())
                             {   // Only if has META
                                 final ItemMeta itemMeta = Objects.requireNonNull(itemHand.getItemMeta()); // Cannot be null here
@@ -269,6 +268,7 @@ public class BlockBreakManager extends AMaterialManager implements IMaterialMana
                                     || (prop.getKey().equals("lore") && itemMeta.hasLore() && !itemMeta.getLore().isEmpty() && itemMeta.getLore().get(0).equals(prop.getValue()))
                                 );
                             }
+                            // else bRet is false -> meta is mandatory if item has properties
                         }
                     }
                     return bRet;

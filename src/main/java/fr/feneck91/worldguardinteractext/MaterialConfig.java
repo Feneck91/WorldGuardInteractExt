@@ -51,6 +51,7 @@ public class MaterialConfig
         m_mapMaterialManagers.put(LecternMaterialManager.MATERIAL_TYPE, new LecternMaterialManager(_plugin));
         m_mapMaterialManagers.put(CauldronMaterialManager.MATERIAL_TYPE, new CauldronMaterialManager(_plugin));
         m_mapMaterialManagers.put(BlockBreakManager.MATERIAL_TYPE, new BlockBreakManager(_plugin));
+        m_mapMaterialManagers.put(FieldMaterialManager.MATERIAL_TYPE, new FieldMaterialManager(_plugin));
     }
 
     /**

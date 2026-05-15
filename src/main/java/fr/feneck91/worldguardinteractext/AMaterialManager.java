@@ -328,7 +328,7 @@ public abstract class AMaterialManager  implements IMaterialManager
      * Get a list of materials from a _listMaterialNames.
      *
      * @param _logger Wrap class to log to sender if provide from a command, used to write message to info logger.
-     * @param _bSearchMaterialIfListEmpty If the list is empty, this allow to make search to all material allowed.
+     * @param _bSearchMaterialIfListEmpty If the list is empty, this allows to make search to all material allowed.
      * @param _strKeyName Key name to retrieve the list of materials information (name / regex and extra information).
      * @param _mapItems Map where to find information.
      * @param _lambdaIsMaterialValid Lambda to check if the material is valid for this search.

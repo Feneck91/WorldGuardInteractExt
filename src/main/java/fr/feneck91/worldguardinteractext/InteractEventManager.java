@@ -1,4 +1,5 @@
 package fr.feneck91.worldguardinteractext;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
@@ -119,7 +120,7 @@ public class InteractEventManager implements Listener
             }
 
             /**
-             * Call event action if nt null.
+             * Call event action if not null.
              *
              * @param _event Event informations.
              */
@@ -143,12 +144,17 @@ public class InteractEventManager implements Listener
         private Block                   m_block;
 
         /**
+         * Block location.
+         */
+        private Location                m_blockLocation;
+
+        /**
          * List of events to cancel / uncancel.
          */
         private ArrayList<EventInfos>   m_lstEvents;
 
         /**
-         * Constuctor.
+         * Constructor.
          *
          * @param _player Player.
          * @param _block Block.
@@ -157,6 +163,22 @@ public class InteractEventManager implements Listener
         {
             m_player = _player;
             m_block = _block;
+            m_blockLocation = m_block.getLocation();
+            m_lstEvents = new ArrayList<EventInfos>();
+        }
+
+        /**
+         * Constructor.
+         *
+         * @param _player Player.
+         * @param _block Block.
+         * @param _blockLocation To set next location, null to ignore location of block in next interactions.
+         */
+        public InteractEventsInfos(Player _player, Block _block, Location _blockLocation)
+        {
+            m_player = _player;
+            m_block = _block;
+            m_blockLocation = _blockLocation;
             m_lstEvents = new ArrayList<EventInfos>();
         }
 
@@ -171,13 +193,14 @@ public class InteractEventManager implements Listener
         {
             m_player = _interactEventsInfos.m_player;
             m_block = _interactEventsInfos.m_block;
+            m_blockLocation = _interactEventsInfos.m_blockLocation;
             m_lstEvents = _interactEventsInfos.m_lstEvents;
         }
 
         /**
-         * Add a new event informations.
+         * Add a new event information.
          *
-         * @param _eventInfos Event informations.
+         * @param _eventInfos Event information.
          */
         public void addEventInfos(EventInfos _eventInfos)
         {
@@ -202,7 +225,7 @@ public class InteractEventManager implements Listener
          * @param _eventPriority Event priority.
          * @param _player Player.
          * @param _block Block.
-         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         * @return true if event is managed, false if all event must be canceled (because all is ok, or current event is not good).
          */
         private boolean ManageEvent(WorldGuardInteractExt _plugin, Event _event, EventPriority _eventPriority, Player _player, Block _block)
         {
@@ -210,7 +233,8 @@ public class InteractEventManager implements Listener
 
             if (!m_lstEvents.isEmpty() && _block != null)
             {
-                if (m_block.getLocation().equals(_block.getLocation()))
+                // If m_blockLocation is null, ignore location. For plant it not easy to know where to plant
+                if (m_blockLocation == null || m_blockLocation.equals(_block.getLocation()))
                 {
                     EventInfos eventInfo = m_lstEvents.removeFirst();
                     bRet = ManageEventInfos(_plugin, _event, _eventPriority, _player, _block, eventInfo);
@@ -244,7 +268,7 @@ public class InteractEventManager implements Listener
          * @param _player Player.
          * @param _block Block.
          * @param eventInfo Event infos.
-         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         * @return true if event is managed, false if all event must be canceled (because all is ok, or current event is not good).
          */
         private boolean ManageEventInfos(WorldGuardInteractExt _plugin, Event _event, EventPriority _eventPriority, Player _player, Block _block, EventInfos eventInfo)
         {
@@ -365,7 +389,7 @@ public class InteractEventManager implements Listener
             }
             else if (_plugin.isVerboseLogEnabled())
             {
-                _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " is not the sme as awaited event (" + eventInfo.GetEventClass().getSimpleName() + " / " + eventInfo.GetEventPriority() + "), surveillance of actions is stopped!");
+                _plugin.getLogger().info("ManageEvent: " + _event.getClass().getSimpleName() + " / " + _eventPriority + " is not the same as awaited event (" + eventInfo.GetEventClass().getSimpleName() + " / " + eventInfo.GetEventPriority() + "), surveillance of actions is stopped!");
             }
 
             return bRet;
@@ -377,7 +401,7 @@ public class InteractEventManager implements Listener
          * @param _plugin Plugin.
          * @param _event Event.
          * @param _eventPriority Event priority.
-         * @return true if event is managed, false if all event must be cancelled (because all is ok, or current event is not good).
+         * @return true if event is managed, false if all event must be canceled (because all is ok, or current event is not good).
          */
         public boolean ManageEvent(WorldGuardInteractExt _plugin, PlayerInteractEvent _event, EventPriority _eventPriority)
         {

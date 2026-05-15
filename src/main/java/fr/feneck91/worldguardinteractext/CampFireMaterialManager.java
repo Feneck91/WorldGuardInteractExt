@@ -73,7 +73,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
     /**
      * Get Material type like __CAMPFIRE__, __FIELD__, etc.
      *
-     * @return tye material type.
+     * @return Material type.
      */
     @Override
     public String getMaterialType()
@@ -144,6 +144,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                             {
                                 case Material.WOODEN_SHOVEL:
                                 case Material.STONE_SHOVEL:
+                                case Material.IRON_SHOVEL:
                                 case Material.GOLDEN_SHOVEL:
                                 case Material.DIAMOND_SHOVEL:
                                 case Material.NETHERITE_SHOVEL:
@@ -340,7 +341,6 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                         }
                         else if (itemHand != null)
                         {   // Check properties
-                            bRet = true;
                             if (itemHand.hasItemMeta())
                             {   // Only if has META
                                 final ItemMeta itemMeta = Objects.requireNonNull(itemHand.getItemMeta()); // Cannot be null here
@@ -349,6 +349,7 @@ public class CampFireMaterialManager extends AMaterialManager implements IMateri
                                     || (prop.getKey().equals("lore") && itemMeta.hasLore() && !itemMeta.getLore().isEmpty() && itemMeta.getLore().get(0).equals(prop.getValue()))
                                 );
                             }
+                            // else bRet is false -> meta is mandatory if item has properties
                         }
                     }
                     return bRet;
