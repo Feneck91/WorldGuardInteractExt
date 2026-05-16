@@ -37,7 +37,7 @@ This is why this plugin was created, to add more interaction rules by disable te
       - Choose items that can fill or empty cauldron.
       - Allow to forbidden interaction with cauldron or let WorldGuard do the job with its with own flags.
       - Allow to display messages to player when interaction is forbidden (fill / empty).
-    Bugs fixes: fix logger for command.
+    Bug fixes: fix logger for command.
     Allow to use placeholder to display material / block to the user into message (explanation into config.yaml).
   - __4.0__ : 2025/08/16
     This version allow to manage __breaking blocks__ : 
@@ -47,14 +47,14 @@ This is why this plugin was created, to add more interaction rules by disable te
     Bug fix: compute regions from block location instead of player's one.
   - __4.1__ : 2026/04/12
     This version fix some bugs for cauldron:
-      - Fix placing / breaking block for cauldron.
+      - Bug fix placing / breaking block for cauldron.
         It is not possible to deny block breaking / placing into WorldGuard configuration and let cauldron working fine with this plugin.
         A workaround has been implemented, see the config file that contains explanations. 
       - Prevent cauldron to be break and add an error message if needed.
       - Prevent block to be placed in cauldron area and add an error message if needed.
   - __4.2__ : 2026/04/15
     This version fix some bugs for campfire:
-      - Fix extinguish for Java version.
+      - Bug fix extinguish for Java version.
   - __5.0__ : 2026/05/16
     This version allow to manage __fields__ : 
       - Choose the type of blocks allowed to be tilled.
@@ -63,6 +63,9 @@ This is why this plugin was created, to add more interaction rules by disable te
       - Choose the tool to allow harvested and tilled
     This allows to plant blocks, till dirt blocks, harvested blocks, even the region is protected from breaking blocks with WorldGuard.  
     Bug fix: fix name and lore tool check into camp fire.
+  - __5.1__ : 2026/05/16
+    Bug fix: add copper (or other) HOE for FIELD.
+    Bug fix: allow to harvest MELON_STEM and PUMPKIN_STEM.
 
 # The configuration file (config.yaml):
 ```yaml

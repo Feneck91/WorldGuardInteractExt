@@ -146,7 +146,9 @@ public class FieldMaterialManager extends AMaterialManager implements IMaterialM
         Material.POTATOES,       // Drops POTATO
         Material.BEETROOTS,      // Drops BEETROOT + BEETROOT_SEEDS
         Material.MELON,          // Drops MELON_SLICE (but hoe is not optimal)
+        Material.MELON_STEM,     // Only the stem
         Material.PUMPKIN,        // Drops PUMPKIN (but hoe is not optimal)
+        Material.PUMPKIN_STEM,   // Only the stem
         Material.NETHER_WART,    // Drops NETHER_WART
         Material.TORCHFLOWER,    // Drops TORCHFLOWER
         Material.PITCHER_PLANT   // Drops PITCHER_POD
@@ -288,6 +290,19 @@ public class FieldMaterialManager extends AMaterialManager implements IMaterialM
                                                 .allMatch((strPropName) ->
                                                       strPropName.equals("name")
                                                    || strPropName.equals("lore"));
+                                            break;
+                                        }
+                                        default:
+                                        {   // For more recent version, allow COPPER_HOE too ! (not exists into compiled version)
+                                            if (materialInformation.getMaterial().name().endsWith("_HOE"))
+                                            {
+                                                bRetValidMaterialInfo = materialInformation.getProperties()
+                                                    .keySet()
+                                                    .stream()
+                                                    .allMatch((strPropName) ->
+                                                          strPropName.equals("name")
+                                                       || strPropName.equals("lore"));
+                                            }
                                             break;
                                         }
                                     }
