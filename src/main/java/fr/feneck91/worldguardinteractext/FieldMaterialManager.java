@@ -454,7 +454,7 @@ public class FieldMaterialManager extends AMaterialManager implements IMaterialM
                     if (infosField.m_lstTillableMaterials.contains(_block.getType()))
                     {   // Try to till
                         interactEventsInfos = new InteractEventManager.InteractEventsInfos(player, _block);
-                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeIgnore, null));
+                        interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
                         interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(PlayerInteractEvent.class, EventPriority.HIGHEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeUncancel,null));
                         // Here, if BlockBreakEvent => it break the block, we only want to till this block so it is BlockPlaceEvent
                         interactEventsInfos.addEventInfos(new InteractEventManager.InteractEventsInfos.EventInfos(BlockPlaceEvent.class, EventPriority.LOWEST, InteractEventManager.InteractEventsInfos.EventInfos.eCancelType.eCancelTypeCancel, null));
